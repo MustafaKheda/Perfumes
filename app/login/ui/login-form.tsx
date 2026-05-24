@@ -44,7 +44,9 @@ export default function LoginForm() {
         throw new Error("error" in body ? body.error : "Unable to sign in");
       }
 
-      router.replace("/shop/all");
+      window.dispatchEvent(new Event("scentora:auth-updated"));
+      window.dispatchEvent(new Event("scentora:cart-updated"));
+      router.replace("/account");
       router.refresh();
     } catch (loginError) {
       setError(loginError instanceof Error ? loginError.message : "Unable to sign in");

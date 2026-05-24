@@ -114,7 +114,9 @@ export default function SignupForm() {
         throw new Error("error" in body ? body.error : "Unable to verify account");
       }
 
-      router.replace("/shop/all");
+      window.dispatchEvent(new Event("scentora:auth-updated"));
+      window.dispatchEvent(new Event("scentora:cart-updated"));
+      router.replace("/account");
       router.refresh();
     } catch (verifyError) {
       setError(

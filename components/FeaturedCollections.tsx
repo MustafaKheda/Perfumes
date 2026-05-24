@@ -1,8 +1,4 @@
-import Image from "next/image";
-import Link from "next/link";
 import SectionHeading from "./SectionHeading";
-import ArrowIcon from "./common/ArrowIcon";
-import CommonLink from "./common/CommonLink";
 import CollectionCard from "./common/CollectionCard";
 
 const collections = [

@@ -1,5 +1,4 @@
 import Image from "next/image";
-import { ArrowRight } from "lucide-react";
 import ArrowIcon from "./ArrowIcon";
 
 interface PerfumeCardProps {

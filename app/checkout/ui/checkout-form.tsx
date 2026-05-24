@@ -2,8 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
-import { ArrowRight, MapPin, Phone } from "lucide-react";
+import { FormEvent, useMemo, useState } from "react";
+import { ArrowRight, Banknote, MapPin, Phone } from "lucide-react";
+import { City, Country, State } from "country-state-city";
+import { isValidPhoneNumber, type CountryCode } from "libphonenumber-js";
+import { validate as validatePostalCode } from "postal-codes-js";
 
 type CheckoutResponse =
   | {
@@ -18,14 +21,22 @@ type CheckoutResponse =
 
 export default function CheckoutForm() {
   const router = useRouter();
+  const defaultCountryCode = "IN";
+  const defaultState = State.getStatesOfCountry(defaultCountryCode)[0];
+  const defaultCity = defaultState
+    ? City.getCitiesOfState(defaultCountryCode, defaultState.isoCode)[0]
+    : undefined;
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
+    dialCode: "+91",
     phone: "",
     addressLine1: "",
     addressLine2: "",
-    city: "",
-    state: "",
+    countryCode: defaultCountryCode,
+    stateCode: defaultState?.isoCode ?? "",
+    city: defaultCity?.name ?? "",
+    state: defaultState?.name ?? "",
     postalCode: "",
     country: "India",
   });
@@ -36,6 +47,46 @@ export default function CheckoutForm() {
     event.preventDefault();
     setLoading(true);
     setError(null);
+
+    const selectedCountry = Country.getCountryByCode(form.countryCode);
+    const requiredFields = [
+      form.firstName,
+      form.lastName,
+      form.dialCode,
+      form.phone,
+      form.countryCode,
+      form.stateCode,
+      form.city,
+      form.addressLine1,
+      form.postalCode,
+    ];
+
+    if (requiredFields.some((field) => !field.trim())) {
+      setError(
+        "First name, last name, phone number, country, state, city, address line 1, and zip/postal code are required.",
+      );
+      setLoading(false);
+      return;
+    }
+
+    const postalValidation = validatePostalCode(form.countryCode, form.postalCode);
+    const fullPhone = `${form.dialCode} ${form.phone}`;
+
+    if (postalValidation !== true) {
+      setError(
+        `Postal code is not valid for ${selectedCountry?.name || form.country}.`,
+      );
+      setLoading(false);
+      return;
+    }
+
+    if (!isValidPhoneNumber(fullPhone, form.countryCode as CountryCode)) {
+      setError(
+        `Mobile number is not valid for ${selectedCountry?.name || form.country}.`,
+      );
+      setLoading(false);
+      return;
+    }
 
     try {
       const response = await fetch("/api/checkout", {
@@ -71,6 +122,19 @@ export default function CheckoutForm() {
     setForm((current) => ({ ...current, [field]: value }));
   }
 
+  const countryOptions = useMemo(() => Country.getAllCountries(), []);
+  const stateOptions = useMemo(
+    () => State.getStatesOfCountry(form.countryCode),
+    [form.countryCode],
+  );
+  const cityOptions = useMemo(
+    () =>
+      form.stateCode
+        ? City.getCitiesOfState(form.countryCode, form.stateCode)
+        : [],
+    [form.countryCode, form.stateCode],
+  );
+
   return (
     <main className="min-h-screen bg-[#f6f1ea] text-textPrimary">
       <section className="mx-auto w-full max-w-[900px] px-4 py-10 lg:px-6">
@@ -103,17 +167,59 @@ export default function CheckoutForm() {
               onChange={(value) => updateField("lastName", value)}
               required
             />
-            <InputField
-              label="Phone number"
-              value={form.phone}
-              onChange={(value) => updateField("phone", value)}
-              icon={<Phone className="h-4 w-4 text-textSecondary" aria-hidden="true" />}
+            <PhoneField
+              dialCode={form.dialCode}
+              phone={form.phone}
+              onDialCodeChange={(value) => updateField("dialCode", value)}
+              onPhoneChange={(value) => updateField("phone", value)}
               required
             />
-            <InputField
-              label="Country"
-              value={form.country}
-              onChange={(value) => updateField("country", value)}
+            <CountryField
+              countries={countryOptions}
+              value={form.countryCode}
+              onChange={(countryCode) => {
+                const selected = Country.getCountryByCode(countryCode);
+                const nextStates = State.getStatesOfCountry(countryCode);
+                const firstState = nextStates[0];
+                const nextCities = firstState
+                  ? City.getCitiesOfState(countryCode, firstState.isoCode)
+                  : [];
+
+                setForm((current) => ({
+                  ...current,
+                  countryCode,
+                  country: selected?.name ?? "",
+                  dialCode: selected?.phonecode ? `+${selected.phonecode}` : current.dialCode,
+                  stateCode: firstState?.isoCode ?? "",
+                  state: firstState?.name ?? "",
+                  city: nextCities[0]?.name ?? "",
+                }));
+              }}
+              required
+            />
+            <StateField
+              states={stateOptions}
+              value={form.stateCode}
+              onChange={(stateCode) => {
+                const selected = State.getStateByCodeAndCountry(
+                  stateCode,
+                  form.countryCode,
+                );
+                const nextCities = City.getCitiesOfState(form.countryCode, stateCode);
+
+                setForm((current) => ({
+                  ...current,
+                  stateCode,
+                  state: selected?.name ?? "",
+                  city: nextCities[0]?.name ?? "",
+                }));
+              }}
+              required
+            />
+            <CityField
+              cities={cityOptions}
+              value={form.city}
+              onChange={(value) => updateField("city", value)}
               required
             />
             <div className="md:col-span-2">
@@ -132,23 +238,35 @@ export default function CheckoutForm() {
               />
             </div>
             <InputField
-              label="City"
-              value={form.city}
-              onChange={(value) => updateField("city", value)}
-              required
-            />
-            <InputField
-              label="State"
-              value={form.state}
-              onChange={(value) => updateField("state", value)}
-              required
-            />
-            <InputField
-              label="Postal code"
+              label="Zip / postal code"
               value={form.postalCode}
               onChange={(value) => updateField("postalCode", value)}
+              autoComplete="postal-code"
               required
             />
+          </div>
+
+          <div className="mt-6 rounded-lg border border-black/10 bg-[#f6f1ea] p-4">
+            <p className="mb-3 text-sm font-semibold">Payment method</p>
+            <label className="flex items-start gap-3 rounded-lg border border-black bg-white p-4">
+              <input
+                type="radio"
+                name="paymentMethod"
+                value="CASH_ON_DELIVERY"
+                checked
+                readOnly
+                className="mt-1"
+              />
+              <span className="flex flex-1 items-start gap-3">
+                <Banknote className="mt-0.5 h-5 w-5 text-textSecondary" aria-hidden="true" />
+                <span>
+                  <span className="block text-sm font-semibold">Cash on Delivery</span>
+                  <span className="mt-1 block text-sm text-textSecondary">
+                    Pay in cash when your order is delivered.
+                  </span>
+                </span>
+              </span>
+            </label>
           </div>
 
           {error ? (
@@ -177,12 +295,14 @@ export default function CheckoutForm() {
 }
 
 function InputField({
+  autoComplete,
   icon,
   label,
   onChange,
   required,
   value,
 }: {
+  autoComplete?: string;
   icon?: React.ReactNode;
   label: string;
   onChange: (value: string) => void;
@@ -191,15 +311,185 @@ function InputField({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-sm font-medium">{label}</span>
+      <span className="mb-2 block text-sm font-medium">
+        {label}
+        {required ? <span className="text-red-600"> *</span> : null}
+      </span>
       <span className="flex items-center rounded-lg border border-black/15 bg-white px-3 focus-within:border-black focus-within:ring-2 focus-within:ring-black/10">
         {icon}
         <input
+          autoComplete={autoComplete}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           className="min-h-11 flex-1 bg-transparent px-3 text-sm outline-none"
           required={required}
         />
+      </span>
+    </label>
+  );
+}
+
+function CountryField({
+  countries,
+  onChange,
+  required,
+  value,
+}: {
+  countries: ReturnType<typeof Country.getAllCountries>;
+  onChange: (value: string) => void;
+  required?: boolean;
+  value: string;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-medium">
+        Country
+        {required ? <span className="text-red-600"> *</span> : null}
+      </span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="min-h-11 w-full rounded-lg border border-black/15 bg-white px-3 text-sm outline-none focus:border-black focus:ring-2 focus:ring-black/10"
+        required={required}
+      >
+        {countries.map((country) => (
+          <option key={country.isoCode} value={country.isoCode}>
+            {country.name}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function StateField({
+  onChange,
+  required,
+  states,
+  value,
+}: {
+  onChange: (value: string) => void;
+  required?: boolean;
+  states: ReturnType<typeof State.getStatesOfCountry>;
+  value: string;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-medium">
+        State
+        {required ? <span className="text-red-600"> *</span> : null}
+      </span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="min-h-11 w-full rounded-lg border border-black/15 bg-white px-3 text-sm outline-none focus:border-black focus:ring-2 focus:ring-black/10"
+        required={required}
+      >
+        {states.length === 0 ? (
+          <option value="">No states available</option>
+        ) : (
+          states.map((state) => (
+            <option key={state.isoCode} value={state.isoCode}>
+              {state.name}
+            </option>
+          ))
+        )}
+      </select>
+    </label>
+  );
+}
+
+function CityField({
+  cities,
+  onChange,
+  required,
+  value,
+}: {
+  cities: ReturnType<typeof City.getCitiesOfState>;
+  onChange: (value: string) => void;
+  required?: boolean;
+  value: string;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-medium">
+        City
+        {required ? <span className="text-red-600"> *</span> : null}
+      </span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="min-h-11 w-full rounded-lg border border-black/15 bg-white px-3 text-sm outline-none focus:border-black focus:ring-2 focus:ring-black/10"
+        required={required}
+      >
+        {cities.length === 0 ? (
+          <option value="">No cities available</option>
+        ) : (
+          cities.map((city) => (
+            <option key={`${city.stateCode}-${city.name}`} value={city.name}>
+              {city.name}
+            </option>
+          ))
+        )}
+      </select>
+    </label>
+  );
+}
+
+function PhoneField({
+  dialCode,
+  onDialCodeChange,
+  onPhoneChange,
+  phone,
+  required,
+}: {
+  dialCode: string;
+  onDialCodeChange: (value: string) => void;
+  onPhoneChange: (value: string) => void;
+  phone: string;
+  required?: boolean;
+}) {
+  const uniqueDialCodes = Array.from(
+    new Map(
+      Country.getAllCountries().map((country) => [
+        `+${country.phonecode}`,
+        { name: country.name, dialCode: `+${country.phonecode}` },
+      ]),
+    ).values(),
+  );
+
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-medium">
+        Phone number
+        {required ? <span className="text-red-600"> *</span> : null}
+      </span>
+      <span className="grid grid-cols-[120px_1fr] items-center rounded-lg border border-black/15 bg-white focus-within:border-black focus-within:ring-2 focus-within:ring-black/10 sm:grid-cols-[170px_1fr]">
+        <select
+          value={dialCode}
+          onChange={(event) => onDialCodeChange(event.target.value)}
+          className="min-h-11 border-r border-black/10 bg-transparent px-2 text-sm outline-none"
+          aria-label="Country calling code"
+          required={required}
+        >
+          {uniqueDialCodes.map((country) => (
+            <option key={`${country.name}-${country.dialCode}`} value={country.dialCode}>
+              {country.dialCode} {country.name}
+            </option>
+          ))}
+        </select>
+        <span className="flex items-center px-3">
+          <Phone className="h-4 w-4 text-textSecondary" aria-hidden="true" />
+          <input
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel-national"
+            value={phone}
+            onChange={(event) => onPhoneChange(event.target.value)}
+            className="min-h-11 min-w-0 flex-1 bg-transparent px-3 text-sm outline-none"
+            required={required}
+          />
+        </span>
       </span>
     </label>
   );

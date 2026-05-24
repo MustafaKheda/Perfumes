@@ -79,7 +79,7 @@ export async function POST(request: Request) {
     data: customer,
   });
 
-  setUserSessionCookie(response, createUserSessionToken(customer));
+  setUserSessionCookie(response, await createUserSessionToken(customer));
 
   return response;
 }

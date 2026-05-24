@@ -86,7 +86,7 @@ export default function ProductCardLarge({ productId, image, name, notes, price,
                 </div>
             </div>
 
-            <BuyButton price={price} />
+            <BuyButton price={price} productId={productId} />
         </div>
     );
 }

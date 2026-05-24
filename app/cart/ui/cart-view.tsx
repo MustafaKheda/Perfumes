@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 
 type CartItem = {
@@ -26,10 +26,15 @@ type CartResponse = {
 export default function CartView() {
   const router = useRouter();
   const [items, setItems] = useState<CartItem[]>([]);
-  const [subtotal, setSubtotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const quantitySyncTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
-  async function loadCart() {
+  const subtotal = useMemo(
+    () => items.reduce((total, item) => total + item.price * item.quantity, 0),
+    [items],
+  );
+
+  const loadCart = useCallback(async () => {
     setLoading(true);
 
     try {
@@ -42,30 +47,56 @@ export default function CartView() {
 
       const body = (await response.json()) as CartResponse;
       setItems(body.data);
-      setSubtotal(body.meta.subtotal);
     } finally {
       setLoading(false);
     }
-  }
+  }, [router]);
 
-  async function updateQuantity(productId: string, quantity: number) {
+  const syncQuantity = useCallback(
+    (productId: string, quantity: number) => {
+      clearTimeout(quantitySyncTimers.current[productId]);
+
+      quantitySyncTimers.current[productId] = setTimeout(async () => {
+        try {
+          const response = await fetch("/api/cart", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ productId, quantity }),
+          });
+
+          if (!response.ok) {
+            await loadCart();
+            return;
+          }
+
+          window.dispatchEvent(new Event("scentora:cart-updated"));
+        } catch {
+          await loadCart();
+        } finally {
+          delete quantitySyncTimers.current[productId];
+        }
+      }, 450);
+    },
+    [loadCart],
+  );
+
+  function updateQuantity(productId: string, quantity: number) {
     if (quantity < 1) {
       return;
     }
 
-    const response = await fetch("/api/cart", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ productId, quantity }),
-    });
-
-    if (response.ok) {
-      window.dispatchEvent(new Event("scentora:cart-updated"));
-      await loadCart();
-    }
+    setItems((currentItems) =>
+      currentItems.map((item) =>
+        item.productId === productId ? { ...item, quantity } : item,
+      ),
+    );
+    syncQuantity(productId, quantity);
   }
 
   async function removeItem(productId: string) {
+    clearTimeout(quantitySyncTimers.current[productId]);
+    delete quantitySyncTimers.current[productId];
+
     const response = await fetch("/api/cart", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -79,7 +110,15 @@ export default function CartView() {
   }
 
   useEffect(() => {
-    loadCart();
+    void Promise.resolve().then(loadCart);
+  }, [loadCart]);
+
+  useEffect(() => {
+    const timers = quantitySyncTimers.current;
+
+    return () => {
+      Object.values(timers).forEach(clearTimeout);
+    };
   }, []);
 
   return (

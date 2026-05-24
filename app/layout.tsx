@@ -1,24 +1,12 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Inter } from "next/font/google";
 import type { ReactNode } from "react";
 import SiteShell from "@/components/layout/SiteShell";
 
-const headingFont = Cormorant_Garamond({
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
-  variable: "--font-heading",
-  display: "swap",
-});
-
-const bodyFont = Inter({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-body",
-  display: "swap",
-});
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: "Scentora | Timeless Scents, Lasting Impressions",
   description:
     "Discover elegant, long-lasting fragrances crafted for individuality. Premium scents, trusted by 25k+ users.",
@@ -36,7 +24,7 @@ export default function RootLayout({
   children: ReactNode;
 }) {
   return (
-    <html lang="en" className={`${headingFont.variable} ${bodyFont.variable}`}>
+    <html lang="en">
       <body className="text-textPrimary">
         <SiteShell>{children}</SiteShell>
       </body>

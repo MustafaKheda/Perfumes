@@ -1,5 +1,6 @@
+import { Facebook, Instagram, Mail, Phone, X, Youtube } from "lucide-react";
+import Link from "next/link";
 
-import { Mail, Phone, Facebook, Instagram, Youtube, X } from "lucide-react";
 export default function Footer() {
     return (
         <footer className=" text-textPrimary font-body">
@@ -15,14 +16,20 @@ export default function Footer() {
                         </p>
 
                         <div className="flex gap-3 mt-4">
-                            <button className="flex items-center gap-2 border border-textPrimary rounded-full px-4 py-2 hover:bg-black hover:text-white transition">
+                            <Link
+                                href="tel:+96500000000"
+                                className="flex items-center gap-2 border border-textPrimary rounded-full px-4 py-2 hover:bg-black hover:text-white transition"
+                            >
                                 <Phone className="w-4 h-4" />
                                 Call
-                            </button>
-                            <button className="flex items-center gap-2 border border-textPrimary rounded-full px-4 py-2 hover:bg-black hover:text-white transition">
+                            </Link>
+                            <Link
+                                href="mailto:support@scentora.com"
+                                className="flex items-center gap-2 border border-textPrimary rounded-full px-4 py-2 hover:bg-black hover:text-white transition"
+                            >
                                 <Mail className="w-4 h-4" />
                                 Email
-                            </button>
+                            </Link>
                         </div>
                     </div>
 
@@ -41,7 +48,7 @@ export default function Footer() {
                             <h4 className="font-semibold mb-3">About Us</h4>
                             <ul className="space-y-2 text-textSecondary">
                                 <li>
-                                    <a href="/about" className="hover:opacity-70">Our Story</a>
+                                    <Link href="/about" className="hover:opacity-70">Our Story</Link>
                                 </li>
                                 <li>Sustainability</li>
                                 <li>Ingredients</li>
@@ -51,9 +58,15 @@ export default function Footer() {
                         <div>
                             <h4 className="font-semibold mb-3">Customer Care</h4>
                             <ul className="space-y-2 text-textSecondary">
-                                <li>FAQ’s</li>
-                                <li>Shipping & Returns</li>
-                                <li>Contact Us</li>
+                                <li>
+                                    <Link href="/faqs" className="hover:opacity-70">FAQ&apos;s</Link>
+                                </li>
+                                <li>
+                                    <Link href="/shipping-returns" className="hover:opacity-70">Shipping & Returns</Link>
+                                </li>
+                                <li>
+                                    <Link href="/contact" className="hover:opacity-70">Contact Us</Link>
+                                </li>
                             </ul>
                         </div>
                     </div>
@@ -81,8 +94,8 @@ export default function Footer() {
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4 pt-6 text-xs text-textSecondary">
                     <p>© 2025 Scentora. All rights reserved.</p>
                     <div className="flex gap-6">
-                        <p>Terms of Service</p>
-                        <p>Privacy Policy</p>
+                        <Link href="/terms" className="hover:opacity-70">Terms of Service</Link>
+                        <Link href="/privacy" className="hover:opacity-70">Privacy Policy</Link>
                     </div>
                 </div>
             </div>

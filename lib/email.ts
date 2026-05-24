@@ -10,6 +10,14 @@ type SendPasswordResetEmailInput = {
   code: string;
 };
 
+type SendOrderStatusEmailInput = {
+  to: string;
+  customerName: string | null;
+  orderId: string;
+  status: string;
+  note: string;
+};
+
 export async function sendVerificationEmail({
   to,
   name,
@@ -86,6 +94,61 @@ export async function sendPasswordResetEmail({
   }
 
   return { sent: true, provider: "resend" as const };
+}
+
+export async function sendOrderStatusEmail({
+  to,
+  customerName,
+  orderId,
+  status,
+  note,
+}: SendOrderStatusEmailInput) {
+  const subject = `Your Scentora order is ${formatStatus(status)}`;
+
+  if (!process.env.RESEND_API_KEY) {
+    console.log(`[dev] ${subject} for ${to}: ${note}`);
+    return { sent: false, provider: "console" as const };
+  }
+
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: process.env.AUTH_EMAIL_FROM || "Scentora <onboarding@resend.dev>",
+      to,
+      subject,
+      html: `
+        <div style="font-family: Arial, sans-serif; color: #1a1a1a;">
+          <h1>${escapeHtml(subject)}</h1>
+          <p>Hello ${escapeHtml(customerName || "there")},</p>
+          <p>${escapeHtml(note)}</p>
+          <p><strong>Order:</strong> ${escapeHtml(shortOrderId(orderId))}</p>
+          <p>Thank you for shopping with Scentora.</p>
+        </div>
+      `,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Unable to send order status email");
+  }
+
+  return { sent: true, provider: "resend" as const };
+}
+
+function formatStatus(status: string) {
+  return status
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function shortOrderId(orderId: string) {
+  return orderId.slice(0, 8).toUpperCase();
 }
 
 function escapeHtml(value: string) {

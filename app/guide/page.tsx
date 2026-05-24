@@ -3,7 +3,6 @@ import { Breadcrumb } from "@/components/common/Breadcrumb";
 import { Heading } from "@/components/common/PageHeading";
 import Newsletter from "@/components/common/Newsletter";
 import BestSellersSection from "@/components/BestsellersSection";
-import CollectionProducts from "@/components/CollectionProducts";
 import GuideCard from "@/components/common/GuideCard";
 
 const guideCards = [

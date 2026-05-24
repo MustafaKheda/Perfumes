@@ -1,3 +1,4 @@
+import Image from "next/image";
 import BestSellers from "./Bestsellers";
 
 export default function Hero() {
@@ -49,23 +50,26 @@ export default function Hero() {
         <div className="flex items-center gap-3">
           {/* avatars */}
           <div className="flex -space-x-2">
-            <img
-              src="/images/user1.jpg"
+            <Image
+              src="/images/perfume-amber.png"
               alt="Customer 1"
+              width={36}
+              height={36}
               className="h-9 w-9 rounded-full border-2 border-pageBg object-cover shadow-card"
-              loading="lazy"
             />
-            <img
-              src="/images/user2.jpg"
+            <Image
+              src="/images/perfume-blue.webp"
               alt="Customer 2"
+              width={36}
+              height={36}
               className="h-9 w-9 rounded-full border-2 border-pageBg object-cover shadow-card"
-              loading="lazy"
             />
-            <img
-              src="/images/user3.jpg"
+            <Image
+              src="/images/perfume-silver.png"
               alt="Customer 3"
+              width={36}
+              height={36}
               className="h-9 w-9 rounded-full border-2 border-pageBg object-cover shadow-card"
-              loading="lazy"
             />
           </div>
 

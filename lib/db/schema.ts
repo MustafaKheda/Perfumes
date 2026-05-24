@@ -18,6 +18,7 @@ export const roleValues = ["USER", "ADMIN"] as const;
 export const productTagValues = ["HOT", "NEW", "POPULAR", "LUXURY"] as const;
 export const orderStatusValues = [
   "PENDING",
+  "CONFIRMED",
   "PAID",
   "PROCESSING",
   "SHIPPED",
@@ -64,6 +65,26 @@ export const users = pgTable(
     ...timestamps,
   },
   (table) => [uniqueIndex("users_email_unique").on(table.email)],
+);
+
+export const userSessions = pgTable(
+  "user_sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("user_sessions_token_hash_unique").on(table.tokenHash),
+    index("user_sessions_user_id_idx").on(table.userId),
+    index("user_sessions_expires_at_idx").on(table.expiresAt),
+  ],
 );
 
 export const categories = pgTable(
@@ -172,6 +193,7 @@ export const orders = pgTable(
     customerName: text("customer_name"),
     customerPhone: text("customer_phone"),
     shippingAddress: jsonb("shipping_address").notNull(),
+    paymentMethod: text("payment_method").notNull().default("CASH_ON_DELIVERY"),
     subtotal: numeric("subtotal", { precision: 10, scale: 2 }).notNull(),
     shippingFee: numeric("shipping_fee", { precision: 10, scale: 2 })
       .notNull()
@@ -186,6 +208,27 @@ export const orders = pgTable(
     index("orders_status_idx").on(table.status),
     index("orders_payment_status_idx").on(table.paymentStatus),
     index("orders_customer_email_idx").on(table.customerEmail),
+  ],
+);
+
+export const orderStatusHistory = pgTable(
+  "order_status_history",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "cascade" }),
+    status: orderStatusEnum("status").notNull(),
+    note: text("note"),
+    changedByAdminId: uuid("changed_by_admin_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("order_status_history_order_id_idx").on(table.orderId),
+    index("order_status_history_status_idx").on(table.status),
+    index("order_status_history_created_at_idx").on(table.createdAt),
   ],
 );
 
@@ -244,9 +287,34 @@ export const newsletterSubscribers = pgTable(
   (table) => [uniqueIndex("newsletter_subscribers_email_unique").on(table.email)],
 );
 
+export const contactInquiries = pgTable(
+  "contact_inquiries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    email: text("email").notNull(),
+    phone: text("phone"),
+    subject: text("subject").notNull(),
+    message: text("message").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("contact_inquiries_email_idx").on(table.email),
+    index("contact_inquiries_created_at_idx").on(table.createdAt),
+  ],
+);
+
 export const usersRelations = relations(users, ({ many }) => ({
   cartItems: many(cartItems),
   orders: many(orders),
+  sessions: many(userSessions),
+}));
+
+export const userSessionsRelations = relations(userSessions, ({ one }) => ({
+  user: one(users, {
+    fields: [userSessions.userId],
+    references: [users.id],
+  }),
 }));
 
 export const categoriesRelations = relations(categories, ({ many }) => ({
@@ -298,7 +366,19 @@ export const ordersRelations = relations(orders, ({ one, many }) => ({
     references: [users.id],
   }),
   items: many(orderItems),
+  statusHistory: many(orderStatusHistory),
   payment: one(payments),
+}));
+
+export const orderStatusHistoryRelations = relations(orderStatusHistory, ({ one }) => ({
+  order: one(orders, {
+    fields: [orderStatusHistory.orderId],
+    references: [orders.id],
+  }),
+  changedByAdmin: one(users, {
+    fields: [orderStatusHistory.changedByAdminId],
+    references: [users.id],
+  }),
 }));
 
 export const orderItemsRelations = relations(orderItems, ({ one }) => ({

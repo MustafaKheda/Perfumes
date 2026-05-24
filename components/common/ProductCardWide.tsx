@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ShoppingBag, ArrowRight } from "lucide-react";
+import { ShoppingBag } from "lucide-react";
 import CommonLink from "./CommonLink";
 
 interface ProductCardWideProps {

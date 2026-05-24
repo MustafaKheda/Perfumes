@@ -38,6 +38,9 @@ export async function GET(request: Request) {
       where,
       with: {
         items: true,
+        statusHistory: {
+          orderBy: (table, { asc }) => [asc(table.createdAt)],
+        },
       },
       orderBy: desc(orders.createdAt),
       offset: (page - 1) * limit,
@@ -137,6 +140,13 @@ function serializeOrder(
       price: string;
       quantity: number;
     }>;
+    statusHistory: Array<{
+      id: string;
+      status: OrderStatus;
+      note: string | null;
+      changedByAdminId: string | null;
+      createdAt: Date;
+    }>;
   },
 ) {
   return {
@@ -146,6 +156,7 @@ function serializeOrder(
     customerName: order.customerName,
     customerPhone: order.customerPhone,
     shippingAddress: order.shippingAddress,
+    paymentMethod: order.paymentMethod,
     subtotal: Number(order.subtotal),
     shippingFee: Number(order.shippingFee),
     totalAmount: Number(order.totalAmount),
@@ -158,6 +169,13 @@ function serializeOrder(
       image: item.image,
       price: Number(item.price),
       quantity: item.quantity,
+    })),
+    statusHistory: order.statusHistory.map((entry) => ({
+      id: entry.id,
+      status: entry.status,
+      note: entry.note,
+      changedByAdminId: entry.changedByAdminId,
+      createdAt: entry.createdAt.toISOString(),
     })),
     createdAt: order.createdAt.toISOString(),
     updatedAt: order.updatedAt.toISOString(),

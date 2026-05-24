@@ -14,8 +14,8 @@
     --shadow-card: 0 16px 32px rgba(0, 0, 0, 0.07);
     --shadow-img: 0 24px 40px rgba(0, 0, 0, 0.15);
 
-    --font-heading: var(--font-heading), serif;
-    --font-body: var(--font-body), sans-serif;
+    --font-heading: Georgia, "Times New Roman", serif;
+    --font-body: Arial, Helvetica, sans-serif;
     --radius-pill: 9999px;
     --radius-soft: 12px;
 

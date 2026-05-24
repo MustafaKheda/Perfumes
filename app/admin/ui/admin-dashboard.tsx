@@ -16,17 +16,19 @@ import {
   Boxes,
   CheckCircle2,
   ClipboardList,
-  IndianRupee,
   LayoutDashboard,
   ListOrdered,
   LogOut,
+  Mail,
   Menu,
+  MessageSquareText,
   Package,
   PlusCircle,
   RefreshCcw,
   Search,
   ShoppingBag,
   Upload,
+  Users,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -86,7 +88,14 @@ type Order = {
   totalAmount: number;
   status: string;
   paymentStatus: string;
+  paymentMethod: string;
   createdAt: string;
+  statusHistory: Array<{
+    id: string;
+    status: string;
+    note: string | null;
+    createdAt: string;
+  }>;
   items: OrderItem[];
 };
 
@@ -113,6 +122,41 @@ type AdminCart = {
   lastUpdatedAt: string;
 };
 
+type ContactInquiry = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  subject: string;
+  message: string;
+  createdAt: string;
+};
+
+type NewsletterSubscriber = {
+  id: string;
+  email: string;
+  createdAt: string;
+};
+
+type AdminCustomer = {
+  id: string;
+  name: string | null;
+  email: string;
+  role: "USER" | "ADMIN";
+  emailVerifiedAt: string | null;
+  lastLoginAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  orderCount: number;
+  totalSpent: number;
+  lastOrderAt: string | null;
+  cartItemCount: number;
+  cartQuantity: number;
+  lastCartUpdatedAt: string | null;
+  activeSessionCount: number;
+  lastSeenAt: string | null;
+};
+
 type ProductForm = {
   name: string;
   slug: string;
@@ -130,19 +174,32 @@ type ProductForm = {
   isActive: boolean;
 };
 
-type NavId = "overview" | "create" | "products" | "collections" | "orders" | "carts";
+type NavId =
+  | "overview"
+  | "create"
+  | "products"
+  | "collections"
+  | "orders"
+  | "carts"
+  | "messages"
+  | "newsletter"
+  | "users";
 
 const navItems: Array<{ id: NavId; label: string; icon: LucideIcon }> = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
+  { id: "users", label: "Users", icon: Users },
   { id: "create", label: "Create Product", icon: PlusCircle },
   { id: "products", label: "Products", icon: Package },
   { id: "collections", label: "Collections", icon: ListOrdered },
   { id: "orders", label: "Orders", icon: ClipboardList },
   { id: "carts", label: "Carts", icon: ShoppingBag },
+  { id: "messages", label: "Messages", icon: MessageSquareText },
+  { id: "newsletter", label: "Newsletter", icon: Mail },
 ];
 
 const orderStatuses = [
   "PENDING",
+  "CONFIRMED",
   "PAID",
   "PROCESSING",
   "SHIPPED",
@@ -180,6 +237,11 @@ export default function AdminDashboard({ admin }: { admin: AdminUser }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [carts, setCarts] = useState<AdminCart[]>([]);
+  const [contactInquiries, setContactInquiries] = useState<ContactInquiry[]>([]);
+  const [newsletterSubscribers, setNewsletterSubscribers] = useState<
+    NewsletterSubscriber[]
+  >([]);
+  const [usersList, setUsersList] = useState<AdminCustomer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [savingProduct, setSavingProduct] = useState(false);
@@ -218,20 +280,26 @@ export default function AdminDashboard({ admin }: { admin: AdminUser }) {
     const activeProducts = products.filter((product) => product.isActive).length;
     const lowStockProducts = products.filter((product) => product.stock <= 5).length;
     const pendingOrders = orders.filter((order) =>
-      ["PENDING", "PAID", "PROCESSING"].includes(order.status),
+      ["PENDING", "CONFIRMED", "PAID", "PROCESSING"].includes(order.status),
     ).length;
     const orderValue = orders.reduce((sum, order) => sum + order.totalAmount, 0);
     const openCarts = carts.length;
+    const messages = contactInquiries.length;
+    const subscribers = newsletterSubscribers.length;
+    const usersCount = usersList.length;
 
     return {
+      usersCount,
       totalProducts: products.length,
       activeProducts,
       lowStockProducts,
       pendingOrders,
       orderValue,
       openCarts,
+      messages,
+      subscribers,
     };
-  }, [carts, orders, products]);
+  }, [carts, contactInquiries, newsletterSubscribers, orders, products, usersList]);
 
   const visibleProducts = useMemo(() => {
     const query = productSearch.trim().toLowerCase();
@@ -343,17 +411,76 @@ export default function AdminDashboard({ admin }: { admin: AdminUser }) {
     }
   }, [readAdminJson]);
 
+  const loadContactInquiries = useCallback(async () => {
+    try {
+      const response = await fetch("/api/admin/contact-inquiries");
+      const json = await readAdminJson<{ data: ContactInquiry[] }>(
+        response,
+        "Failed to load contact messages",
+      );
+      setContactInquiries(json.data);
+    } catch (loadError) {
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Failed to load contact messages",
+      );
+    }
+  }, [readAdminJson]);
+
+  const loadNewsletterSubscribers = useCallback(async () => {
+    try {
+      const response = await fetch("/api/admin/newsletter-subscribers");
+      const json = await readAdminJson<{ data: NewsletterSubscriber[] }>(
+        response,
+        "Failed to load newsletter subscribers",
+      );
+      setNewsletterSubscribers(json.data);
+    } catch (loadError) {
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Failed to load newsletter subscribers",
+      );
+    }
+  }, [readAdminJson]);
+
+  const loadUsers = useCallback(async () => {
+    try {
+      const response = await fetch("/api/admin/users");
+      const json = await readAdminJson<{ data: AdminCustomer[] }>(
+        response,
+        "Failed to load users",
+      );
+      setUsersList(json.data);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "Failed to load users");
+    }
+  }, [readAdminJson]);
+
   useEffect(() => {
-    void loadInitialData();
+    void Promise.resolve().then(loadInitialData);
   }, [loadInitialData]);
 
   useEffect(() => {
-    void loadOrders();
+    void Promise.resolve().then(loadOrders);
   }, [loadOrders]);
 
   useEffect(() => {
-    void loadCarts();
+    void Promise.resolve().then(loadCarts);
   }, [loadCarts]);
+
+  useEffect(() => {
+    void Promise.resolve().then(loadContactInquiries);
+  }, [loadContactInquiries]);
+
+  useEffect(() => {
+    void Promise.resolve().then(loadNewsletterSubscribers);
+  }, [loadNewsletterSubscribers]);
+
+  useEffect(() => {
+    void Promise.resolve().then(loadUsers);
+  }, [loadUsers]);
 
   async function onCreateProduct(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -505,6 +632,15 @@ export default function AdminDashboard({ admin }: { admin: AdminUser }) {
     router.refresh();
   }
 
+  function viewUserOrders(user: AdminCustomer) {
+    setOrderFilters({
+      q: user.email,
+      status: "",
+      paymentStatus: "",
+    });
+    setActiveView("orders");
+  }
+
   function renderActiveView() {
     if (loading) {
       return <LoadingPanel />;
@@ -561,11 +697,24 @@ export default function AdminDashboard({ admin }: { admin: AdminUser }) {
       return <CartsView carts={carts} />;
     }
 
+    if (activeView === "messages") {
+      return <ContactInquiriesView inquiries={contactInquiries} />;
+    }
+
+    if (activeView === "newsletter") {
+      return <NewsletterSubscribersView subscribers={newsletterSubscribers} />;
+    }
+
+    if (activeView === "users") {
+      return <UsersView users={usersList} onViewOrders={viewUserOrders} />;
+    }
+
     return (
       <OverviewView
         carts={carts}
         orders={orders}
         products={products}
+        users={usersList}
         stats={stats}
         onChangeView={setActiveView}
       />
@@ -626,6 +775,9 @@ export default function AdminDashboard({ admin }: { admin: AdminUser }) {
                 void loadInitialData();
                 void loadOrders();
                 void loadCarts();
+                void loadContactInquiries();
+                void loadNewsletterSubscribers();
+                void loadUsers();
               }}
             >
               <RefreshCcw className="h-4 w-4" aria-hidden="true" />
@@ -747,28 +899,39 @@ function OverviewView({
   carts,
   orders,
   products,
+  users,
   stats,
   onChangeView,
 }: {
   carts: AdminCart[];
   orders: Order[];
   products: Product[];
+  users: AdminCustomer[];
   stats: {
+    usersCount: number;
     totalProducts: number;
     activeProducts: number;
     lowStockProducts: number;
     pendingOrders: number;
     orderValue: number;
     openCarts: number;
+    subscribers: number;
   };
   onChangeView: (id: NavId) => void;
 }) {
   const lowStockProducts = products.filter((product) => product.stock <= 5).slice(0, 6);
   const recentOrders = orders.slice(0, 6);
+  const recentUsers = users.slice(0, 6);
 
   return (
     <div className="space-y-5">
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+        <MetricCard
+          icon={Users}
+          label="Users"
+          value={String(stats.usersCount)}
+          tone="blue"
+        />
         <MetricCard
           icon={Package}
           label="Total Products"
@@ -793,9 +956,15 @@ function OverviewView({
           value={String(stats.openCarts)}
           tone="blue"
         />
+        <MetricCard
+          icon={Mail}
+          label="Subscribers"
+          value={String(stats.subscribers)}
+          tone="green"
+        />
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-[1fr_1fr]">
+      <section className="grid gap-5 xl:grid-cols-3">
         <article className="rounded-lg border border-slate-200 bg-white">
           <PanelHeader
             eyebrow="Inventory"
@@ -823,6 +992,38 @@ function OverviewView({
             </div>
           ) : (
             <EmptyState title="No low stock products" />
+          )}
+        </article>
+
+        <article className="rounded-lg border border-slate-200 bg-white">
+          <PanelHeader
+            eyebrow="Users"
+            title="Recent accounts"
+            actionLabel="View users"
+            onAction={() => onChangeView("users")}
+          />
+          {recentUsers.length > 0 ? (
+            <div className="divide-y divide-slate-100">
+              {recentUsers.map((user) => (
+                <div
+                  key={user.id}
+                  className="flex items-center justify-between gap-4 px-5 py-3"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold">
+                      {user.name || "Unnamed user"}
+                    </p>
+                    <p className="truncate text-xs text-slate-500">{user.email}</p>
+                  </div>
+                  <StatusPill
+                    label={user.emailVerifiedAt ? "VERIFIED" : "UNVERIFIED"}
+                    tone={user.emailVerifiedAt ? "green" : "warning"}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState title="No users found" />
           )}
         </article>
 
@@ -859,6 +1060,7 @@ function OverviewView({
             <EmptyState title="No orders loaded" />
           )}
         </article>
+
       </section>
 
       <section className="rounded-lg border border-slate-200 bg-white">
@@ -1373,6 +1575,7 @@ function OrdersView({
                 <th className="px-5 py-3 font-semibold">Customer</th>
                 <th className="px-5 py-3 font-semibold">Items</th>
                 <th className="px-5 py-3 font-semibold">Total</th>
+                <th className="px-5 py-3 font-semibold">Payment</th>
                 <th className="px-5 py-3 font-semibold">Order Status</th>
                 <th className="px-5 py-3 font-semibold">Payment Status</th>
                 <th className="px-5 py-3 font-semibold">Date</th>
@@ -1383,6 +1586,25 @@ function OrdersView({
                 <tr key={order.id} className="hover:bg-slate-50/80">
                   <td className="px-5 py-3 font-medium">
                     <span className="font-mono text-xs">{order.id}</span>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {order.statusHistory.length > 0 ? (
+                        order.statusHistory.map((entry) => (
+                          <span
+                            key={entry.id}
+                            title={`${entry.note || entry.status} - ${formatDate(
+                              entry.createdAt,
+                            )}`}
+                            className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-600"
+                          >
+                            {entry.status}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-600">
+                          {order.status}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-5 py-3">
                     <div className="font-semibold">{order.customerName || "N/A"}</div>
@@ -1393,6 +1615,9 @@ function OrdersView({
                   </td>
                   <td className="px-5 py-3 font-semibold">
                     {formatInr(order.totalAmount)}
+                  </td>
+                  <td className="px-5 py-3 text-xs font-semibold text-slate-600">
+                    {formatPaymentMethod(order.paymentMethod)}
                   </td>
                   <td className="px-5 py-3">
                     <select
@@ -1505,6 +1730,231 @@ function CartsView({ carts }: { carts: AdminCart[] }) {
         </div>
       ) : (
         <EmptyState title="No cart items found" />
+      )}
+    </section>
+  );
+}
+
+function ContactInquiriesView({ inquiries }: { inquiries: ContactInquiry[] }) {
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white">
+      <div className="border-b border-slate-200 p-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+          Customer messages
+        </p>
+        <h2 className="font-heading text-3xl font-semibold">Contact inquiries</h2>
+      </div>
+
+      {inquiries.length > 0 ? (
+        <div className="divide-y divide-slate-100">
+          {inquiries.map((inquiry) => (
+            <article key={inquiry.id} className="p-5">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0">
+                  <h3 className="font-heading text-xl font-semibold">
+                    {inquiry.subject}
+                  </h3>
+                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-500">
+                    <span>{inquiry.name}</span>
+                    <a
+                      href={`mailto:${inquiry.email}`}
+                      className="font-medium text-slate-700 hover:opacity-70"
+                    >
+                      {inquiry.email}
+                    </a>
+                    {inquiry.phone ? (
+                      <a
+                        href={`tel:${inquiry.phone}`}
+                        className="font-medium text-slate-700 hover:opacity-70"
+                      >
+                        {inquiry.phone}
+                      </a>
+                    ) : null}
+                  </div>
+                </div>
+                <p className="shrink-0 text-sm text-slate-500">
+                  {formatDateTime(inquiry.createdAt)}
+                </p>
+              </div>
+              <p className="mt-4 whitespace-pre-wrap rounded-lg bg-slate-50 p-4 text-sm leading-6 text-slate-700">
+                {inquiry.message}
+              </p>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <EmptyState title="No contact inquiries found" />
+      )}
+    </section>
+  );
+}
+
+function NewsletterSubscribersView({
+  subscribers,
+}: {
+  subscribers: NewsletterSubscriber[];
+}) {
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white">
+      <div className="border-b border-slate-200 p-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+          Newsletter
+        </p>
+        <h2 className="font-heading text-3xl font-semibold">Subscribers</h2>
+      </div>
+
+      {subscribers.length > 0 ? (
+        <div className="max-h-[calc(100vh-220px)] overflow-auto">
+          <table className="w-full min-w-[640px] text-left text-sm">
+            <thead className="sticky top-0 z-10 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-5 py-3 font-semibold">Email</th>
+                <th className="px-5 py-3 font-semibold">Subscribed</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {subscribers.map((subscriber) => (
+                <tr key={subscriber.id} className="hover:bg-slate-50/80">
+                  <td className="px-5 py-3">
+                    <a
+                      href={`mailto:${subscriber.email}`}
+                      className="font-medium text-slate-800 hover:opacity-70"
+                    >
+                      {subscriber.email}
+                    </a>
+                  </td>
+                  <td className="px-5 py-3 text-slate-600">
+                    {formatDateTime(subscriber.createdAt)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <EmptyState title="No newsletter subscribers found" />
+      )}
+    </section>
+  );
+}
+
+function UsersView({
+  users,
+  onViewOrders,
+}: {
+  users: AdminCustomer[];
+  onViewOrders: (user: AdminCustomer) => void;
+}) {
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white">
+      <div className="border-b border-slate-200 p-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+          Accounts
+        </p>
+        <h2 className="font-heading text-3xl font-semibold">Users</h2>
+      </div>
+
+      {users.length > 0 ? (
+        <div className="max-h-[calc(100vh-220px)] overflow-auto">
+          <table className="w-full min-w-[1320px] text-left text-sm">
+            <thead className="sticky top-0 z-10 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-5 py-3 font-semibold">User</th>
+                <th className="px-5 py-3 font-semibold">Role</th>
+                <th className="px-5 py-3 font-semibold">Verification</th>
+                <th className="px-5 py-3 font-semibold">Sessions</th>
+                <th className="px-5 py-3 font-semibold">Orders</th>
+                <th className="px-5 py-3 font-semibold">Spent</th>
+                <th className="px-5 py-3 font-semibold">Cart</th>
+                <th className="px-5 py-3 font-semibold">Last Login</th>
+                <th className="px-5 py-3 font-semibold">Last Seen</th>
+                <th className="px-5 py-3 font-semibold">Created</th>
+                <th className="px-5 py-3 font-semibold">Updated</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {users.map((user) => (
+                <tr key={user.id} className="hover:bg-slate-50/80">
+                  <td className="px-5 py-3">
+                    <div className="font-semibold">{user.name || "Unnamed user"}</div>
+                    <a
+                      href={`mailto:${user.email}`}
+                      className="text-xs font-medium text-slate-600 hover:opacity-70"
+                    >
+                      {user.email}
+                    </a>
+                    <div className="mt-1 font-mono text-[11px] text-slate-400">
+                      {user.id}
+                    </div>
+                  </td>
+                  <td className="px-5 py-3">
+                    <StatusPill
+                      label={user.role}
+                      tone={user.role === "ADMIN" ? "blue" : "neutral"}
+                    />
+                  </td>
+                  <td className="px-5 py-3">
+                    <StatusPill
+                      label={user.emailVerifiedAt ? "VERIFIED" : "UNVERIFIED"}
+                      tone={user.emailVerifiedAt ? "green" : "warning"}
+                    />
+                    <p className="mt-1 text-xs text-slate-500">
+                      {user.emailVerifiedAt ? formatDateTime(user.emailVerifiedAt) : "N/A"}
+                    </p>
+                  </td>
+                  <td className="px-5 py-3 font-medium">
+                    {user.activeSessionCount}
+                  </td>
+                  <td className="px-5 py-3">
+                    <button
+                      type="button"
+                      className="rounded-md text-left font-medium text-blue-700 underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:text-slate-400 disabled:no-underline"
+                      disabled={user.orderCount === 0}
+                      title={
+                        user.orderCount > 0
+                          ? `View orders for ${user.email}`
+                          : "No orders for this user"
+                      }
+                      onClick={() => onViewOrders(user)}
+                    >
+                      {user.orderCount}
+                    </button>
+                    <p className="text-xs text-slate-500">
+                      Last: {user.lastOrderAt ? formatDate(user.lastOrderAt) : "N/A"}
+                    </p>
+                  </td>
+                  <td className="px-5 py-3 font-semibold">
+                    {formatInr(user.totalSpent)}
+                  </td>
+                  <td className="px-5 py-3">
+                    <p className="font-medium">
+                      {user.cartQuantity} qty / {user.cartItemCount} lines
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {user.lastCartUpdatedAt
+                        ? formatDate(user.lastCartUpdatedAt)
+                        : "No cart"}
+                    </p>
+                  </td>
+                  <td className="px-5 py-3 text-slate-600">
+                    {user.lastLoginAt ? formatDateTime(user.lastLoginAt) : "N/A"}
+                  </td>
+                  <td className="px-5 py-3 text-slate-600">
+                    {user.lastSeenAt ? formatDateTime(user.lastSeenAt) : "N/A"}
+                  </td>
+                  <td className="px-5 py-3 text-slate-600">
+                    {formatDateTime(user.createdAt)}
+                  </td>
+                  <td className="px-5 py-3 text-slate-600">
+                    {formatDateTime(user.updatedAt)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <EmptyState title="No users found" />
       )}
     </section>
   );
@@ -1802,7 +2252,7 @@ function toneForStatus(status: string): "blue" | "danger" | "green" | "neutral" 
     return "danger";
   }
 
-  if (["PAID", "PROCESSING"].includes(status)) {
+  if (["CONFIRMED", "PAID", "PROCESSING"].includes(status)) {
     return "blue";
   }
 
@@ -1823,4 +2273,18 @@ function formatDate(value: string) {
     month: "short",
     year: "numeric",
   }).format(new Date(value));
+}
+
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
+function formatPaymentMethod(value: string) {
+  return value === "CASH_ON_DELIVERY" ? "Cash on Delivery" : value;
 }

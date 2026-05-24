@@ -138,8 +138,8 @@ export default function ExperienceSection() {
                     {/* Main Model Image */}
                     <div className="relative w-full h-full rounded-4xl overflow-hidden shadow-img">
                         <Image
-                            src="/images/perfume-model.webp"
-                            alt="Woman applying perfume on wrist wearing green sweater"
+                            src="/images/about-bg.webp"
+                            alt="SCENTORA premium fragrance experience"
                             fill
                             className="object-cover"
                             loading="lazy"

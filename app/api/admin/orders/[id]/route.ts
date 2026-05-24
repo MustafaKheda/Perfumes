@@ -3,12 +3,15 @@ import { requireAdminUser } from "@/lib/admin-auth";
 import { badRequest, notFound, ok, unauthorized } from "@/lib/api/http";
 import { db } from "@/lib/db";
 import {
+  orderStatusHistory,
   orderStatusValues,
   orders,
   paymentStatusValues,
   type OrderStatus,
   type PaymentStatus,
 } from "@/lib/db/schema";
+import { sendOrderStatusEmail } from "@/lib/email";
+import { sendOrderStatusSms } from "@/lib/sms";
 
 type RouteContext = {
   params: Promise<{
@@ -69,15 +72,51 @@ export async function PATCH(request: Request, context: RouteContext) {
     return badRequest("At least one of status or paymentStatus is required");
   }
 
-  const [updated] = await db
-    .update(orders)
-    .set({
-      ...(status ? { status } : {}),
-      ...(paymentStatus ? { paymentStatus } : {}),
-      updatedAt: new Date(),
-    })
-    .where(eq(orders.id, id))
-    .returning({ id: orders.id });
+  const updated = await db.transaction(async (tx) => {
+    const currentOrder = await tx.query.orders.findFirst({
+      where: eq(orders.id, id),
+      columns: {
+        id: true,
+        status: true,
+        customerEmail: true,
+        customerName: true,
+        customerPhone: true,
+      },
+    });
+
+    if (!currentOrder) {
+      return null;
+    }
+
+    const [updatedOrder] = await tx
+      .update(orders)
+      .set({
+        ...(status ? { status } : {}),
+        ...(paymentStatus ? { paymentStatus } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(orders.id, id))
+      .returning({ id: orders.id });
+
+    if (status && status !== currentOrder.status) {
+      await tx.insert(orderStatusHistory).values({
+        orderId: id,
+        status,
+        note: statusNote(status),
+        changedByAdminId: admin.id,
+      });
+    }
+
+    return {
+      id: updatedOrder.id,
+      previousStatus: currentOrder.status,
+      statusChanged: Boolean(status && status !== currentOrder.status),
+      customerEmail: currentOrder.customerEmail,
+      customerName: currentOrder.customerName,
+      customerPhone: currentOrder.customerPhone,
+      newStatus: status,
+    };
+  });
 
   if (!updated) {
     return notFound("Order not found");
@@ -87,6 +126,17 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   if (!order) {
     return notFound("Order not found");
+  }
+
+  if (updated.statusChanged && updated.newStatus) {
+    await notifyCustomerAboutOrderStatus({
+      orderId: updated.id,
+      customerEmail: updated.customerEmail,
+      customerName: updated.customerName,
+      customerPhone: updated.customerPhone,
+      status: updated.newStatus,
+      note: statusNote(updated.newStatus),
+    });
   }
 
   return ok({
@@ -100,8 +150,63 @@ async function findOrderById(id: string) {
     where: eq(orders.id, id),
     with: {
       items: true,
+      statusHistory: {
+        orderBy: (table, { asc }) => [asc(table.createdAt)],
+      },
     },
   });
+}
+
+async function notifyCustomerAboutOrderStatus({
+  orderId,
+  customerEmail,
+  customerName,
+  customerPhone,
+  status,
+  note,
+}: {
+  orderId: string;
+  customerEmail: string;
+  customerName: string | null;
+  customerPhone: string | null;
+  status: OrderStatus;
+  note: string;
+}) {
+  const tasks: Array<Promise<unknown>> = [
+    sendOrderStatusEmail({
+      to: customerEmail,
+      customerName,
+      orderId,
+      status,
+      note,
+    }),
+  ];
+
+  if (customerPhone) {
+    tasks.push(
+      sendOrderStatusSms({
+        to: customerPhone,
+        orderId,
+        status,
+        note,
+      }),
+    );
+  }
+
+  const results = await Promise.allSettled(tasks);
+  const failed = results.filter((result) => result.status === "rejected");
+
+  if (failed.length > 0) {
+    console.error("Order status notification failed", {
+      orderId,
+      status,
+      failures: failed.map((result) =>
+        result.status === "rejected" && result.reason instanceof Error
+          ? result.reason.message
+          : "Unknown notification error",
+      ),
+    });
+  }
 }
 
 function parseOrderStatus(value: unknown) {
@@ -140,6 +245,13 @@ function serializeOrder(
       price: string;
       quantity: number;
     }>;
+    statusHistory: Array<{
+      id: string;
+      status: OrderStatus;
+      note: string | null;
+      changedByAdminId: string | null;
+      createdAt: Date;
+    }>;
   },
 ) {
   return {
@@ -149,6 +261,7 @@ function serializeOrder(
     customerName: order.customerName,
     customerPhone: order.customerPhone,
     shippingAddress: order.shippingAddress,
+    paymentMethod: order.paymentMethod,
     subtotal: Number(order.subtotal),
     shippingFee: Number(order.shippingFee),
     totalAmount: Number(order.totalAmount),
@@ -162,7 +275,33 @@ function serializeOrder(
       price: Number(item.price),
       quantity: item.quantity,
     })),
+    statusHistory: order.statusHistory.map((entry) => ({
+      id: entry.id,
+      status: entry.status,
+      note: entry.note,
+      changedByAdminId: entry.changedByAdminId,
+      createdAt: entry.createdAt.toISOString(),
+    })),
     createdAt: order.createdAt.toISOString(),
     updatedAt: order.updatedAt.toISOString(),
   };
+}
+
+function statusNote(status: OrderStatus) {
+  switch (status) {
+    case "PENDING":
+      return "Order marked as pending";
+    case "CONFIRMED":
+      return "Order confirmed";
+    case "SHIPPED":
+      return "Order shipped";
+    case "DELIVERED":
+      return "Order delivered";
+    case "CANCELLED":
+      return "Order cancelled";
+    case "REFUNDED":
+      return "Order refunded";
+    default:
+      return `Order status changed to ${status}`;
+  }
 }
