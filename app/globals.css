@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+  @theme {
+    --color-pageBg: #fef8e8;
+    --color-pageBgAlt: #fffaf0;
+    --color-accent: #FC8C3D;
+    --color-accentLight: #FFCC70;
+    --color-textPrimary: #262626;
+    --color-textSecondary: #6B6B6B;
+    --color-cardBg: #fdefca;
+    --color-borderRing: #262626;
+    --color-btnAccent: linear-gradient(90deg, #F9A826 0%, #FFCC70 100%);
+
+    --shadow-card: 0 16px 32px rgba(0, 0, 0, 0.07);
+    --shadow-img: 0 24px 40px rgba(0, 0, 0, 0.15);
+
+    --font-heading: var(--font-heading), serif;
+    --font-body: var(--font-body), sans-serif;
+    --radius-pill: 9999px;
+    --radius-soft: 12px;
+
+    --bg-hero-stripes: repeating-linear-gradient(to right,
+        rgba(0, 0, 0, 0) 0px,
+        rgba(0, 0, 0, 0) 20px,
+        rgba(0, 0, 0, 0.03) 20px,
+        rgba(0, 0, 0, 0.03) 24px);
+
+    
+  }
+
+/* smooth text rendering / reset tweaks */
+html {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* make sure body uses our body font by default */
+body {
+  font-family: var(--font-body), system-ui, sans-serif;
+  background-color: var(--color-pageBg);
+}

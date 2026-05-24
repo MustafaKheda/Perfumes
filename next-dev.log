@@ -1,0 +1,22 @@
+
+> my-app@0.1.0 dev
+> next dev
+
+   ▲ Next.js 16.0.1 (Turbopack)
+   - Local:        http://localhost:3001
+   - Network:      http://192.168.31.225:3001
+
+ ✓ Starting...
+Creating turbopack project { dir: 'C:\\Pro\\New folder\\my-app', testMode: true }
+ ✓ Ready in 8.2s
+ GET /api/products?category=men&limit=2 200 in 1095ms (compile: 1048ms, render: 48ms)
+ GET /api/categories 200 in 1362ms (compile: 1341ms, render: 20ms)
+ GET /api/collections/luxury/products?limit=2 200 in 2.6s (compile: 2.6s, render: 13ms)
+ POST /api/newsletter 201 in 280ms (compile: 269ms, render: 11ms)
+   Reload env: .env
+   Reload env: .env
+   Reload env: .env
+ GET /api/categories 200 in 1121ms (compile: 1057ms, render: 64ms)
+ GET /api/collections/luxury/products?limit=2 200 in 1116ms (compile: 653ms, render: 463ms)
+ POST /api/newsletter 201 in 1166ms (compile: 853ms, render: 313ms)
+ GET /api/products?category=men&limit=2 200 in 1183ms (compile: 450ms, render: 733ms)
