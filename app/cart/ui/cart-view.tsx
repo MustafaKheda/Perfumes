@@ -2,9 +2,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import {
+  getGuestCart,
+  removeGuestCartItem,
+  updateGuestCartItem,
+} from "@/lib/guest-cart";
 
 type CartItem = {
   id: string;
@@ -24,8 +28,8 @@ type CartResponse = {
 };
 
 export default function CartView() {
-  const router = useRouter();
   const [items, setItems] = useState<CartItem[]>([]);
+  const [guestMode, setGuestMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const quantitySyncTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
@@ -41,19 +45,31 @@ export default function CartView() {
       const response = await fetch("/api/cart", { cache: "no-store" });
 
       if (response.status === 401) {
-        router.replace("/login");
+        setGuestMode(true);
+        setItems(
+          getGuestCart().map((item) => ({
+            id: `guest-${item.productId}`,
+            ...item,
+          })),
+        );
         return;
       }
 
       const body = (await response.json()) as CartResponse;
+      setGuestMode(false);
       setItems(body.data);
     } finally {
       setLoading(false);
     }
-  }, [router]);
+  }, []);
 
   const syncQuantity = useCallback(
     (productId: string, quantity: number) => {
+      if (guestMode) {
+        updateGuestCartItem(productId, quantity);
+        return;
+      }
+
       clearTimeout(quantitySyncTimers.current[productId]);
 
       quantitySyncTimers.current[productId] = setTimeout(async () => {
@@ -77,7 +93,7 @@ export default function CartView() {
         }
       }, 450);
     },
-    [loadCart],
+    [guestMode, loadCart],
   );
 
   function updateQuantity(productId: string, quantity: number) {
@@ -94,6 +110,12 @@ export default function CartView() {
   }
 
   async function removeItem(productId: string) {
+    if (guestMode) {
+      removeGuestCartItem(productId);
+      await loadCart();
+      return;
+    }
+
     clearTimeout(quantitySyncTimers.current[productId]);
     delete quantitySyncTimers.current[productId];
 
@@ -207,7 +229,7 @@ export default function CartView() {
                 <span className="font-semibold">${subtotal.toFixed(2)}</span>
               </div>
               <Link
-                href="/checkout"
+                href={guestMode ? "/login?redirect=/checkout" : "/checkout"}
                 className="mt-5 flex min-h-11 w-full items-center justify-center rounded-lg bg-black px-4 text-sm font-semibold text-white hover:bg-black/85"
               >
                 Proceed to checkout

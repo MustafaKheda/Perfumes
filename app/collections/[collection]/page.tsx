@@ -5,6 +5,7 @@ import Newsletter from "@/components/common/Newsletter";
 import BestSellersSection from "@/components/BestsellersSection";
 import CollectionProducts from "@/components/CollectionProducts";
 import { findCollectionBySlug, getProducts } from "@/lib/api/catalog";
+import { getWishlistProductIdSet } from "@/lib/api/wishlist";
 
 interface Props {
   params: Promise<{
@@ -36,10 +37,13 @@ export default async function CollectionPage({ params }: Props) {
     notFound();
   }
 
-  const result = await getProducts({
-    collection: collection === "all" ? null : collection,
-    limit: "48",
-  });
+  const [result, wishlistProductIds] = await Promise.all([
+    getProducts({
+      collection: collection === "all" ? null : collection,
+      limit: "48",
+    }),
+    getWishlistProductIdSet(),
+  ]);
   const collectionName = labelMap[collection] ?? collectionDetails.name;
 
   const breadcrumbItems = [
@@ -63,11 +67,13 @@ export default async function CollectionPage({ params }: Props) {
             id: product.id,
             image: product.image,
             name: product.name,
+            slug: product.slug,
             notes: product.notes.join(", "),
             price: product.price.toFixed(2),
             tag: product.tag ?? undefined,
             collection,
             description: product.description,
+            isWishlisted: wishlistProductIds.has(product.id),
           }))}
         />
         <BestSellersSection />

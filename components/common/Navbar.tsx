@@ -1,9 +1,11 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { LogOut, Menu, ShoppingBag, UserRound, X } from "lucide-react";
+import { Heart, LogOut, Menu, ShoppingBag, UserRound, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { getGuestCartQuantity } from "@/lib/guest-cart";
+import { getGuestWishlistQuantity } from "@/lib/guest-wishlist";
 
 type CurrentUser = {
   id: string;
@@ -16,6 +18,7 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [cartQuantity, setCartQuantity] = useState(0);
+  const [wishlistQuantity, setWishlistQuantity] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -26,7 +29,7 @@ export default function Navbar() {
 
         if (response.status === 401) {
           if (active) {
-            setCartQuantity(0);
+            setCartQuantity(getGuestCartQuantity());
           }
           return;
         }
@@ -40,7 +43,7 @@ export default function Navbar() {
         }
       } catch {
         if (active) {
-          setCartQuantity(0);
+          setCartQuantity(getGuestCartQuantity());
         }
       }
     }
@@ -60,19 +63,47 @@ export default function Navbar() {
       }
     }
 
+    async function loadWishlist() {
+      try {
+        const response = await fetch("/api/wishlist", { cache: "no-store" });
+
+        if (response.status === 401) {
+          if (active) {
+            setWishlistQuantity(getGuestWishlistQuantity());
+          }
+          return;
+        }
+
+        const body = (await response.json()) as {
+          meta?: { total?: number };
+        };
+
+        if (active) {
+          setWishlistQuantity(body.meta?.total ?? 0);
+        }
+      } catch {
+        if (active) {
+          setWishlistQuantity(getGuestWishlistQuantity());
+        }
+      }
+    }
+
     function loadSessionState() {
       void loadUser();
       void loadCart();
+      void loadWishlist();
     }
 
     loadSessionState();
 
     window.addEventListener("scentora:cart-updated", loadCart);
+    window.addEventListener("scentora:wishlist-updated", loadWishlist);
     window.addEventListener("scentora:auth-updated", loadSessionState);
 
     return () => {
       active = false;
       window.removeEventListener("scentora:cart-updated", loadCart);
+      window.removeEventListener("scentora:wishlist-updated", loadWishlist);
       window.removeEventListener("scentora:auth-updated", loadSessionState);
     };
   }, []);
@@ -81,8 +112,8 @@ export default function Navbar() {
 
   return (
     <header className="w-full">
-      <div className="mx-auto flex max-w-[1300px] items-center justify-between p-4 font-body text-[#1A1A1A]">
-        <div className="flex items-center gap-6">
+      <div className="relative mx-auto flex max-w-[1300px] items-center justify-between p-4 font-body text-[#1A1A1A]">
+        <div className="flex flex-1 items-center gap-6">
           <button
             type="button"
             aria-label={menuOpen ? "Close menu" : "Open menu"}
@@ -96,7 +127,7 @@ export default function Navbar() {
             )}
           </button>
 
-          <nav className="hidden items-center gap-6 text-[14px] font-medium md:flex">
+          <nav className="hidden items-center gap-6 text-[15px] font-bold md:flex">
             <Link href="/" className="hover:opacity-70" prefetch>
               Home
             </Link>
@@ -117,12 +148,12 @@ export default function Navbar() {
 
         <Link
           href="/"
-          className="font-heading text-xl font-semibold uppercase tracking-widest"
+          className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-center font-heading text-2xl font-bold uppercase tracking-widest"
         >
           SCENTORA
         </Link>
 
-        <div className="flex items-center gap-3 sm:gap-4">
+        <div className="flex flex-1 items-center justify-end gap-3 sm:gap-4">
           <Link href="/cart" aria-label="Cart" className="relative">
             <span className="grid h-9 w-9 place-items-center rounded-full border border-black/50 hover:bg-black/5">
               <ShoppingBag className="h-4 w-4" aria-hidden="true" />
@@ -130,6 +161,22 @@ export default function Navbar() {
             {cartQuantity > 0 ? (
               <span className="absolute -right-1 -top-1 rounded-full bg-[#F9A826] px-1.5 text-[10px] font-semibold leading-none text-black">
                 {cartQuantity}
+              </span>
+            ) : null}
+          </Link>
+
+          <Link href="/wishlist" aria-label="Wishlist" className="relative">
+            <span className="grid h-9 w-9 place-items-center rounded-full border border-black/50 hover:bg-black/5">
+              <Heart
+                className={`h-4 w-4 ${
+                  wishlistQuantity > 0 ? "fill-red-500 text-red-500" : ""
+                }`}
+                aria-hidden="true"
+              />
+            </span>
+            {wishlistQuantity > 0 ? (
+              <span className="absolute -right-1 -top-1 rounded-full bg-[#F9A826] px-1.5 text-[10px] font-semibold leading-none text-black">
+                {wishlistQuantity}
               </span>
             ) : null}
           </Link>
@@ -168,7 +215,7 @@ export default function Navbar() {
             transition={{ duration: 0.2 }}
             className="overflow-hidden border-t border-black/10 md:hidden"
           >
-            <nav className="flex flex-col gap-1 px-4 py-3 text-[14px] font-medium text-[#1A1A1A]">
+            <nav className="flex flex-col gap-1 px-4 pb-3 text-[15px] font-bold text-[#1A1A1A]">
               {[
                 ["Home", "/"],
                 ["Shop", "/shop/all"],
@@ -177,6 +224,7 @@ export default function Navbar() {
                 ["About", "/about"],
                 [accountLabel, user ? "/account" : "/login"],
                 ["Cart", "/cart"],
+                ["Wishlist", "/wishlist"],
                 ...(user ? [["Logout", "/logout"]] : []),
               ].map(([label, href]) => (
                 <Link

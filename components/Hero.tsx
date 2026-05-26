@@ -1,4 +1,6 @@
 import Image from "next/image";
+import Link from "next/link";
+import { ArrowRight, Sparkles } from "lucide-react";
 import BestSellers from "./Bestsellers";
 
 export default function Hero() {
@@ -21,30 +23,19 @@ export default function Hero() {
       <div className="flex flex-wrap items-center gap-4 sm:gap-6 mt-8">
         
         {/* Explore button */}
-        <button
-          className="flex items-center gap-2 bg-btnAccent text-black text-[0.9rem] font-medium font-body rounded-pill pl-4 pr-4 py-3 shadow-card border border-black/10 hover:scale-[1.03] active:scale-[0.99] transition-transform"
+        <Link
+          href="/shop/all"
+          className="group relative inline-flex min-h-14 items-center gap-3 overflow-hidden rounded-full border border-black/10 bg-[#F9A826] px-5 pr-2 font-body text-sm font-bold text-black shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:bg-black hover:text-white hover:shadow-xl active:translate-y-0"
           aria-label="Explore Shop"
         >
-          <span>Explore Shop</span>
-          <span className="flex items-center justify-center h-8 w-8 rounded-full border border-black/40 bg-white/20">
-            {/* arrow icon */}
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              className="text-black"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <line x1="5" y1="12" x2="19" y2="12" />
-              <polyline points="12 5 19 12 12 19" />
-            </svg>
+          <span className="grid h-9 w-9 place-items-center rounded-full bg-white/45 transition group-hover:bg-white/15">
+            <Sparkles className="h-4 w-4" aria-hidden="true" />
           </span>
-        </button>
+          <span className="whitespace-nowrap">Explore Shop</span>
+          <span className="grid h-10 w-10 place-items-center rounded-full bg-black text-white transition group-hover:translate-x-0.5 group-hover:bg-white group-hover:text-black">
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </span>
+        </Link>
 
         {/* Avatars + trust */}
         <div className="flex items-center gap-3">

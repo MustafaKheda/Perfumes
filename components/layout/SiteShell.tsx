@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import Footer from "@/components/common/Footer";
 import Navbar from "@/components/common/Navbar";
+import PromoBar from "@/components/common/PromoBar";
 
 export default function SiteShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -15,6 +16,7 @@ export default function SiteShell({ children }: { children: ReactNode }) {
 
   return (
     <>
+      <PromoBar />
       <Navbar />
       {children}
       <Footer />

@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { badRequest, unauthorized } from "@/lib/api/http";
+import { badRequest } from "@/lib/api/http";
 import { db } from "@/lib/db";
 import {
   cartItems,
@@ -11,12 +11,13 @@ import {
 } from "@/lib/db/schema";
 import { City, Country, State } from "country-state-city";
 import { isValidPhoneNumber, type CountryCode } from "libphonenumber-js";
-import { validate as validatePostalCode } from "postal-codes-js";
+import { isPostalCodeValid } from "@/lib/postal-code";
 import { requireCustomerUser } from "@/lib/user-auth";
 
 type CheckoutBody = {
   firstName?: unknown;
   lastName?: unknown;
+  email?: unknown;
   dialCode?: unknown;
   phone?: unknown;
   addressLine1?: unknown;
@@ -27,14 +28,23 @@ type CheckoutBody = {
   stateCode?: unknown;
   postalCode?: unknown;
   country?: unknown;
+  guestItems?: unknown;
 };
 
 export async function POST(request: Request) {
-  const user = await requireCustomerUser();
-
-  if (!user) {
-    return unauthorized("Please sign in to place an order");
+  try {
+    return await createOrder(request);
+  } catch (error) {
+    console.error("Checkout failed", error);
+    return NextResponse.json(
+      { error: "Unable to place order. Please try again." },
+      { status: 500 },
+    );
   }
+}
+
+async function createOrder(request: Request) {
+  const user = await requireCustomerUser();
 
   let body: CheckoutBody;
 
@@ -46,6 +56,7 @@ export async function POST(request: Request) {
 
   const firstName = readString(body.firstName);
   const lastName = readString(body.lastName);
+  const email = user?.email ?? readString(body.email).toLowerCase();
   const dialCode = readString(body.dialCode) || "+91";
   const phone = readString(body.phone);
   const addressLine1 = readString(body.addressLine1);
@@ -71,6 +82,7 @@ export async function POST(request: Request) {
     !firstName ||
     !lastName ||
     !dialCode ||
+    !email ||
     !phone ||
     !countryCode ||
     !stateCode ||
@@ -79,8 +91,12 @@ export async function POST(request: Request) {
     !postalCode
   ) {
     return badRequest(
-      "First name, last name, phone number, country, state, city, address line 1, and zip/postal code are required",
+      "First name, last name, email, phone number, country, state, city, address line 1, and zip/postal code are required",
     );
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return badRequest("A valid email is required");
   }
 
   if (!countryRecord) {
@@ -95,9 +111,7 @@ export async function POST(request: Request) {
     return badRequest("Please select a valid city");
   }
 
-  const postalValidation = validatePostalCode(countryCode, postalCode);
-
-  if (postalValidation !== true) {
+  if (!isPostalCodeValid(countryCode, postalCode)) {
     return badRequest(`Postal code is not valid for ${country}`);
   }
 
@@ -107,17 +121,19 @@ export async function POST(request: Request) {
     return badRequest(`Mobile number is not valid for ${country}`);
   }
 
-  const cartRows = await db
-    .select({
-      productId: products.id,
-      name: products.name,
-      image: products.image,
-      price: products.price,
-      quantity: cartItems.quantity,
-    })
-    .from(cartItems)
-    .innerJoin(products, eq(cartItems.productId, products.id))
-    .where(eq(cartItems.userId, user.id));
+  const cartRows = user
+    ? await db
+        .select({
+          productId: products.id,
+          name: products.name,
+          image: products.image,
+          price: products.price,
+          quantity: cartItems.quantity,
+        })
+        .from(cartItems)
+        .innerJoin(products, eq(cartItems.productId, products.id))
+        .where(eq(cartItems.userId, user.id))
+    : await getGuestCartRows(body.guestItems);
 
   if (cartRows.length === 0) {
     return badRequest("Your cart is empty");
@@ -134,8 +150,8 @@ export async function POST(request: Request) {
     const [createdOrder] = await tx
       .insert(orders)
       .values({
-        userId: user.id,
-        customerEmail: user.email,
+        userId: user?.id,
+        customerEmail: email,
         customerName: `${firstName} ${lastName}`,
         customerPhone: fullPhone,
         paymentMethod: "CASH_ON_DELIVERY",
@@ -179,7 +195,9 @@ export async function POST(request: Request) {
       note: "Order placed by customer",
     });
 
-    await tx.delete(cartItems).where(eq(cartItems.userId, user.id));
+    if (user) {
+      await tx.delete(cartItems).where(eq(cartItems.userId, user.id));
+    }
 
     return createdOrder;
   });
@@ -194,4 +212,56 @@ export async function POST(request: Request) {
 
 function readString(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+async function getGuestCartRows(value: unknown) {
+  const items = Array.isArray(value)
+    ? value
+        .map((item) => ({
+          productId:
+            item && typeof item === "object" && "productId" in item
+              ? readString(item.productId)
+              : "",
+          quantity:
+            item && typeof item === "object" && "quantity" in item
+              ? normalizeQuantity(item.quantity)
+              : 1,
+        }))
+        .filter((item) => item.productId)
+    : [];
+
+  if (items.length === 0) {
+    return [];
+  }
+
+  const rows = await db
+    .select({
+      productId: products.id,
+      name: products.name,
+      image: products.image,
+      price: products.price,
+    })
+    .from(products)
+    .where(eq(products.isActive, true));
+
+  const quantityByProductId = new Map(
+    items.map((item) => [item.productId, item.quantity]),
+  );
+
+  return rows
+    .filter((row) => quantityByProductId.has(row.productId))
+    .map((row) => ({
+      ...row,
+      quantity: quantityByProductId.get(row.productId) ?? 1,
+    }));
+}
+
+function normalizeQuantity(value: unknown) {
+  const quantity = typeof value === "number" ? value : Number(value);
+
+  if (!Number.isInteger(quantity) || quantity < 1) {
+    return 1;
+  }
+
+  return Math.min(quantity, 99);
 }

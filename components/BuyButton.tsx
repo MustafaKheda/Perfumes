@@ -3,11 +3,16 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import CommonLink from "./common/CommonLink";
+import { addGuestCartItem } from "@/lib/guest-cart";
 
 export default function BuyButton({
+  image,
+  name,
   price,
   productId,
 }: {
+  image?: string;
+  name?: string;
   price: string;
   productId?: string;
 }) {
@@ -30,7 +35,14 @@ export default function BuyButton({
       });
 
       if (response.status === 401) {
-        router.push("/login");
+        addGuestCartItem({
+          productId,
+          name: name || "Perfume",
+          image: image || "/images/perfume-bottle.webp",
+          price: Number(price),
+          quantity: 1,
+        });
+        router.push("/cart");
         return;
       }
 

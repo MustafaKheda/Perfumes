@@ -126,6 +126,7 @@ export const products = pgTable(
     name: text("name").notNull(),
     slug: text("slug").notNull(),
     description: text("description").notNull(),
+    detailedDescription: text("detailed_description"),
     image: text("image").notNull(),
     imagePublicId: text("image_public_id"),
     price: numeric("price", { precision: 10, scale: 2 }).notNull(),
@@ -181,6 +182,27 @@ export const cartItems = pgTable(
   (table) => [
     uniqueIndex("cart_items_user_product_unique").on(table.userId, table.productId),
     index("cart_items_product_id_idx").on(table.productId),
+  ],
+);
+
+export const wishlistItems = pgTable(
+  "wishlist_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("wishlist_items_user_product_unique").on(
+      table.userId,
+      table.productId,
+    ),
+    index("wishlist_items_product_id_idx").on(table.productId),
   ],
 );
 
@@ -304,8 +326,15 @@ export const contactInquiries = pgTable(
   ],
 );
 
+export const siteSettings = pgTable("site_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  ...timestamps,
+});
+
 export const usersRelations = relations(users, ({ many }) => ({
   cartItems: many(cartItems),
+  wishlistItems: many(wishlistItems),
   orders: many(orders),
   sessions: many(userSessions),
 }));
@@ -328,6 +357,7 @@ export const productsRelations = relations(products, ({ one, many }) => ({
   }),
   collections: many(productCollections),
   cartItems: many(cartItems),
+  wishlistItems: many(wishlistItems),
   orderItems: many(orderItems),
 }));
 
@@ -356,6 +386,17 @@ export const cartItemsRelations = relations(cartItems, ({ one }) => ({
   }),
   product: one(products, {
     fields: [cartItems.productId],
+    references: [products.id],
+  }),
+}));
+
+export const wishlistItemsRelations = relations(wishlistItems, ({ one }) => ({
+  user: one(users, {
+    fields: [wishlistItems.userId],
+    references: [users.id],
+  }),
+  product: one(products, {
+    fields: [wishlistItems.productId],
     references: [products.id],
   }),
 }));

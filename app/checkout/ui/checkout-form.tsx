@@ -6,7 +6,8 @@ import { FormEvent, useMemo, useState } from "react";
 import { ArrowRight, Banknote, MapPin, Phone } from "lucide-react";
 import { City, Country, State } from "country-state-city";
 import { isValidPhoneNumber, type CountryCode } from "libphonenumber-js";
-import { validate as validatePostalCode } from "postal-codes-js";
+import { clearGuestCart, getGuestCart } from "@/lib/guest-cart";
+import { isPostalCodeValid } from "@/lib/postal-code";
 
 type CheckoutResponse =
   | {
@@ -29,6 +30,7 @@ export default function CheckoutForm() {
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
+    email: "",
     dialCode: "+91",
     phone: "",
     addressLine1: "",
@@ -52,6 +54,7 @@ export default function CheckoutForm() {
     const requiredFields = [
       form.firstName,
       form.lastName,
+      form.email,
       form.dialCode,
       form.phone,
       form.countryCode,
@@ -63,16 +66,15 @@ export default function CheckoutForm() {
 
     if (requiredFields.some((field) => !field.trim())) {
       setError(
-        "First name, last name, phone number, country, state, city, address line 1, and zip/postal code are required.",
+        "First name, last name, email, phone number, country, state, city, address line 1, and zip/postal code are required.",
       );
       setLoading(false);
       return;
     }
 
-    const postalValidation = validatePostalCode(form.countryCode, form.postalCode);
     const fullPhone = `${form.dialCode} ${form.phone}`;
 
-    if (postalValidation !== true) {
+    if (!isPostalCodeValid(form.countryCode, form.postalCode)) {
       setError(
         `Postal code is not valid for ${selectedCountry?.name || form.country}.`,
       );
@@ -89,16 +91,19 @@ export default function CheckoutForm() {
     }
 
     try {
+      const guestItems = getGuestCart().map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+      }));
       const response = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, guestItems }),
       });
-      const body = (await response.json()) as CheckoutResponse;
+      const body = await readCheckoutResponse(response);
 
       if (response.status === 401) {
-        router.replace("/login");
-        return;
+        throw new Error("Your cart is empty");
       }
 
       if (!response.ok || "error" in body) {
@@ -106,6 +111,7 @@ export default function CheckoutForm() {
       }
 
       window.dispatchEvent(new Event("scentora:cart-updated"));
+      clearGuestCart();
       sessionStorage.setItem("scentora:last-order-id", body.data.orderId);
       router.replace("/order-success");
       router.refresh();
@@ -165,6 +171,13 @@ export default function CheckoutForm() {
               label="Last name"
               value={form.lastName}
               onChange={(value) => updateField("lastName", value)}
+              required
+            />
+            <InputField
+              label="Email"
+              type="email"
+              value={form.email}
+              onChange={(value) => updateField("email", value)}
               required
             />
             <PhoneField
@@ -294,12 +307,27 @@ export default function CheckoutForm() {
   );
 }
 
+async function readCheckoutResponse(response: Response): Promise<CheckoutResponse> {
+  const text = await response.text();
+
+  if (!text) {
+    return { error: "Checkout failed. Please try again." };
+  }
+
+  try {
+    return JSON.parse(text) as CheckoutResponse;
+  } catch {
+    return { error: "Checkout failed. Please try again." };
+  }
+}
+
 function InputField({
   autoComplete,
   icon,
   label,
   onChange,
   required,
+  type = "text",
   value,
 }: {
   autoComplete?: string;
@@ -307,6 +335,7 @@ function InputField({
   label: string;
   onChange: (value: string) => void;
   required?: boolean;
+  type?: string;
   value: string;
 }) {
   return (
@@ -319,6 +348,7 @@ function InputField({
         {icon}
         <input
           autoComplete={autoComplete}
+          type={type}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           className="min-h-11 flex-1 bg-transparent px-3 text-sm outline-none"

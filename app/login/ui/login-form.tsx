@@ -20,7 +20,7 @@ type LoginResponse =
       error: string;
     };
 
-export default function LoginForm() {
+export default function LoginForm({ redirectPath = "/account" }: { redirectPath?: string }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -46,7 +46,7 @@ export default function LoginForm() {
 
       window.dispatchEvent(new Event("scentora:auth-updated"));
       window.dispatchEvent(new Event("scentora:cart-updated"));
-      router.replace("/account");
+      router.replace(redirectPath);
       router.refresh();
     } catch (loginError) {
       setError(loginError instanceof Error ? loginError.message : "Unable to sign in");

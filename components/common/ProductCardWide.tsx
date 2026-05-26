@@ -1,10 +1,16 @@
 "use client";
 
 import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { ShoppingBag } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { Heart, ShoppingBag } from "lucide-react";
 import CommonLink from "./CommonLink";
+import { addGuestCartItem } from "@/lib/guest-cart";
+import {
+    addGuestWishlistItem,
+    isGuestWishlisted,
+    removeGuestWishlistItem,
+} from "@/lib/guest-wishlist";
 
 interface ProductCardWideProps {
     productId?: string;
@@ -16,6 +22,8 @@ interface ProductCardWideProps {
     stockText?: string;
     features?: string;
     notes?: string;
+    slug?: string;
+    isWishlisted?: boolean;
 }
 
 export default function ProductCardWide({
@@ -28,9 +36,18 @@ export default function ProductCardWide({
     stockText = "Only have 25 Products",
     features,
     notes,
+    slug,
+    isWishlisted = false,
 }: ProductCardWideProps) {
-    const router = useRouter();
     const [adding, setAdding] = useState(false);
+    const [wishlistActive, setWishlistActive] = useState(isWishlisted);
+    const [updatingWishlist, setUpdatingWishlist] = useState(false);
+
+    useEffect(() => {
+        if (productId && isGuestWishlisted(productId)) {
+            setWishlistActive(true);
+        }
+    }, [productId]);
 
     async function addToCart() {
         if (!productId) {
@@ -47,7 +64,13 @@ export default function ProductCardWide({
             });
 
             if (response.status === 401) {
-                router.push("/login");
+                addGuestCartItem({
+                    productId,
+                    name,
+                    image,
+                    price: Number(price),
+                    quantity: 1,
+                });
                 return;
             }
 
@@ -61,10 +84,59 @@ export default function ProductCardWide({
         }
     }
 
+    async function toggleWishlist() {
+        if (!productId || updatingWishlist) {
+            return;
+        }
+
+        setUpdatingWishlist(true);
+
+        try {
+            const response = await fetch("/api/wishlist", {
+                method: wishlistActive ? "DELETE" : "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ productId }),
+            });
+
+            if (response.status === 401) {
+                if (wishlistActive) {
+                    removeGuestWishlistItem(productId);
+                    setWishlistActive(false);
+                } else {
+                    addGuestWishlistItem({
+                        productId,
+                        name,
+                        image,
+                        price: Number(price),
+                        notes,
+                        slug,
+                    });
+                    setWishlistActive(true);
+                }
+                return;
+            }
+
+            if (!response.ok) {
+                throw new Error("Unable to update wishlist");
+            }
+
+            setWishlistActive((active) => !active);
+            window.dispatchEvent(new Event("scentora:wishlist-updated"));
+        } finally {
+            setUpdatingWishlist(false);
+        }
+    }
+
+    const detailHref = `/products/${slug || productId || ""}`;
+
     return (
         <div className="flex flex-col md:flex-row rounded-3xl gap-5 sm:gap-10 overflow-hidden  transition-all duration-300">
             {/* Left - Image */}
-            <div className="relative w-full sm:w-5/12 aspect-square overflow-hidden rounded-3xl shadow-md">
+            <Link
+                href={detailHref}
+                className="relative w-full sm:w-5/12 aspect-square overflow-hidden rounded-3xl shadow-md"
+                aria-label={`View ${name} details`}
+            >
                 <Image
                     src={image}
                     alt={name}
@@ -73,13 +145,15 @@ export default function ProductCardWide({
                     sizes="(max-width: 640px) 100vw, 33vw"
                     priority
                 />
-            </div>
+            </Link>
 
             {/* Right - Content */}
             <div className="w-full sm:flex-1 flex flex-col justify-center text-textPrimary">
-                <h2 className="font-heading text-5xl font-semibold mb-1">
-                    {name}
-                </h2>
+                <Link href={detailHref} className="hover:opacity-75">
+                    <h2 className="font-heading text-5xl font-semibold mb-1">
+                        {name}
+                    </h2>
+                </Link>
                 <p className="mb-4">{tagline}</p>
 
                 {/* Price & stock */}
@@ -119,9 +193,32 @@ export default function ProductCardWide({
 
                 {/* Buttons */}
                 <div className="flex items-center gap-4">
-                    <CommonLink inverse className="flex-1">
-                        Buy Now
+                    <CommonLink inverse href={detailHref} className="flex-1">
+                        View Details
                     </CommonLink>
+
+                    <button
+                        type="button"
+                        onClick={toggleWishlist}
+                        disabled={!productId || updatingWishlist}
+                        aria-pressed={wishlistActive}
+                        aria-label={
+                            wishlistActive
+                                ? `Remove ${name} from wishlist`
+                                : `Add ${name} to wishlist`
+                        }
+                        className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-textPrimary transition-all hover:bg-[#3b3b3b] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                        <Heart
+                            size={18}
+                            className={
+                                wishlistActive
+                                    ? "fill-red-500 text-red-500"
+                                    : undefined
+                            }
+                            aria-hidden="true"
+                        />
+                    </button>
 
                     <button
                         onClick={addToCart}

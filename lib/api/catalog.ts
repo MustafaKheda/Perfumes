@@ -307,6 +307,7 @@ function serializeProduct(product: ProductWithRelations) {
     image: product.image,
     name: product.name,
     description: product.description,
+    detailedDescription: product.detailedDescription,
     notes: product.notes,
     price: Number(product.price),
     tag: product.tag,

@@ -14,6 +14,8 @@ const child = spawn("next", ["build"], {
   stdio: ["inherit", "pipe", "pipe"],
 });
 
+let hasErrors = false;
+
 function forwardFiltered(stream, target) {
   let buffer = "";
 
@@ -25,6 +27,10 @@ function forwardFiltered(stream, target) {
     for (const line of lines) {
       if (!ignoredWarnings.some((warning) => line.includes(warning))) {
         target.write(`${line}\n`);
+        // Mark as error if we see critical error messages
+        if (line.toLowerCase().includes("error") && !line.includes("error:")) {
+          hasErrors = true;
+        }
       }
     }
   });
@@ -35,6 +41,9 @@ function forwardFiltered(stream, target) {
       !ignoredWarnings.some((warning) => buffer.includes(warning))
     ) {
       target.write(buffer);
+      if (buffer.toLowerCase().includes("error")) {
+        hasErrors = true;
+      }
     }
   });
 }
@@ -47,5 +56,10 @@ child.on("exit", (code, signal) => {
     process.kill(process.pid, signal);
   }
 
-  process.exit(code ?? 1);
+  // Exit with the actual code if there are errors, otherwise exit with 0 for success
+  if (hasErrors || code !== 0) {
+    process.exit(code ?? 1);
+  } else {
+    process.exit(0);
+  }
 });

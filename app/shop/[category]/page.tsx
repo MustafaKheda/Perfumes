@@ -7,10 +7,14 @@ import Newsletter from "@/components/common/Newsletter";
 import { Pagination } from "@/components/common/Pagination";
 import BestSellersSection from "@/components/BestsellersSection";
 import { findCategoryBySlug, getProducts } from "@/lib/api/catalog";
+import { getWishlistProductIdSet } from "@/lib/api/wishlist";
 
 interface Props {
   params: Promise<{
     category: string;
+  }>;
+  searchParams?: Promise<{
+    search?: string | string[];
   }>;
 }
 
@@ -29,8 +33,13 @@ export const labelMap: Record<string, string> = {
   unisex: "Unisex Luxury Perfume",
 };
 
-export default async function CategoryPage({ params }: Props) {
+export default async function CategoryPage({ params, searchParams }: Props) {
   const { category } = await params;
+  const resolvedSearchParams = await searchParams;
+  const search =
+    typeof resolvedSearchParams?.search === "string"
+      ? resolvedSearchParams.search.trim()
+      : "";
   const categoryDetails =
     category === "all" ? null : await findCategoryBySlug(category);
 
@@ -38,11 +47,18 @@ export default async function CategoryPage({ params }: Props) {
     notFound();
   }
 
-  const result = await getProducts({
-    category: category === "all" ? null : category,
-    limit: "48",
-  });
+  const [result, wishlistProductIds] = await Promise.all([
+    getProducts({
+      category: category === "all" ? null : category,
+      search,
+      limit: "48",
+    }),
+    getWishlistProductIdSet(),
+  ]);
   const headingTitle = labelMap[category] ?? categoryDetails?.name ?? "Perfumes";
+  const pageTitle = search
+    ? `Search results for "${search}"`
+    : `${headingTitle}s`;
 
   const breadcrumbItems = [
     { label: "Shop", href: "/" },
@@ -53,7 +69,7 @@ export default async function CategoryPage({ params }: Props) {
     <main className="min-h-screen max-w-[1300px] mx-auto px-4 font-body">
       <Breadcrumb items={breadcrumbItems} />
       <Heading
-        text={`${headingTitle}s`}
+        text={pageTitle}
         count={result.meta.total}
         Filter={<FilterBar currentCategory={category} />}
       />
@@ -66,16 +82,20 @@ export default async function CategoryPage({ params }: Props) {
               productId={product.id}
               image={product.image}
               name={product.name}
+              slug={product.slug}
               notes={product.notes.join(", ")}
               price={product.price.toFixed(2)}
               tag={product.tag ?? undefined}
               category={product.category}
+              isWishlisted={wishlistProductIds.has(product.id)}
             />
           ))}
         </div>
       ) : (
         <p className="text-center text-textSecondary py-10">
-          No perfumes found in this category.
+          {search
+            ? `No perfumes found for "${search}".`
+            : "No perfumes found in this category."}
         </p>
       )}
 

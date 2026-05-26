@@ -3,12 +3,12 @@ import PerfumeCard from "./common/PerfumeCard";
 import SectionHeading from "./SectionHeading";
 
 const perfumes = [
-    { image: "/images/Perfume/1.webp", name: "Premium Men Scent", notes: "Oud, Bergamot, Amber", price: "$50.00" },
-    { image: "/images/Perfume/2.webp", name: "Premium Men Scent", notes: "Oud, Bergamot, Amber", price: "$50.00" },
-    { image: "/images/Perfume/3.webp", name: "Premium Men Scent", notes: "Oud, Bergamot, Amber", price: "$50.00" },
-    { image: "/images/Perfume/18.webp", name: "Premium Men Scent", notes: "Oud, Bergamot, Amber", price: "$50.00" },
-    { image: "/images/Perfume/15.webp", name: "Premium Men Scent", notes: "Oud, Bergamot, Amber", price: "$50.00" },
-    { image: "/images/Perfume/9.webp", name: "Premium Men Scent", notes: "Oud, Bergamot, Amber", price: "$50.00" },
+    { image: "/images/Perfume/1.webp", name: "Premium Men Scent", notes: "Oud, Bergamot, Amber", price: "$50.00", productId: "1" },
+    { image: "/images/Perfume/2.webp", name: "Premium Men Scent", notes: "Oud, Bergamot, Amber", price: "$50.00", productId: "2" },
+    { image: "/images/Perfume/3.webp", name: "Premium Men Scent", notes: "Oud, Bergamot, Amber", price: "$50.00", productId: "3" },
+    { image: "/images/Perfume/18.webp", name: "Premium Men Scent", notes: "Oud, Bergamot, Amber", price: "$50.00", productId: "4" },
+    { image: "/images/Perfume/15.webp", name: "Premium Men Scent", notes: "Oud, Bergamot, Amber", price: "$50.00", productId: "5" },
+    { image: "/images/Perfume/9.webp", name: "Premium Men Scent", notes: "Oud, Bergamot, Amber", price: "$50.00", productId: "6" },
 
 ];
 

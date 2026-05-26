@@ -4,11 +4,13 @@ interface Product {
     id: string;
     image: string;
     name: string;
+    slug: string;
     notes: string;
     price: string;
     tag?: string;
     collection: string;
     description: string;
+    isWishlisted?: boolean;
 }
 
 export default function CollectionProducts({
@@ -32,10 +34,12 @@ export default function CollectionProducts({
                     productId={product.id}
                     image={product.image}
                     name={product.name}
+                    slug={product.slug}
                     price={product.price}
                     description={product.description}
                     features="Long-lasting, rich & warm, perfect for evening wear."
                     notes={product.notes}
+                    isWishlisted={product.isWishlisted}
                 />
             ))}
         </div>

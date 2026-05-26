@@ -26,6 +26,7 @@ import {
   PlusCircle,
   RefreshCcw,
   Search,
+  Settings,
   ShoppingBag,
   Upload,
   Users,
@@ -138,6 +139,10 @@ type NewsletterSubscriber = {
   createdAt: string;
 };
 
+type SiteSettings = {
+  promoBannerText: string;
+};
+
 type AdminCustomer = {
   id: string;
   name: string | null;
@@ -183,7 +188,8 @@ type NavId =
   | "carts"
   | "messages"
   | "newsletter"
-  | "users";
+  | "users"
+  | "settings";
 
 const navItems: Array<{ id: NavId; label: string; icon: LucideIcon }> = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -195,6 +201,7 @@ const navItems: Array<{ id: NavId; label: string; icon: LucideIcon }> = [
   { id: "carts", label: "Carts", icon: ShoppingBag },
   { id: "messages", label: "Messages", icon: MessageSquareText },
   { id: "newsletter", label: "Newsletter", icon: Mail },
+  { id: "settings", label: "Settings", icon: Settings },
 ];
 
 const orderStatuses = [
@@ -228,6 +235,11 @@ const emptyProductForm: ProductForm = {
   isActive: true,
 };
 
+const defaultSiteSettings: SiteSettings = {
+  promoBannerText:
+    "Free Shipping on Orders over 30KWD - Arrives Next Day From 5 to 9 PM",
+};
+
 export default function AdminDashboard({ admin }: { admin: AdminUser }) {
   const router = useRouter();
   const [activeView, setActiveView] = useState<NavId>("overview");
@@ -241,6 +253,8 @@ export default function AdminDashboard({ admin }: { admin: AdminUser }) {
   const [newsletterSubscribers, setNewsletterSubscribers] = useState<
     NewsletterSubscriber[]
   >([]);
+  const [siteSettings, setSiteSettings] =
+    useState<SiteSettings>(defaultSiteSettings);
   const [usersList, setUsersList] = useState<AdminCustomer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -248,6 +262,7 @@ export default function AdminDashboard({ admin }: { admin: AdminUser }) {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const [updatingCollectionId, setUpdatingCollectionId] = useState<string | null>(null);
+  const [savingSettings, setSavingSettings] = useState(false);
   const [productSearch, setProductSearch] = useState("");
 
   const [productForm, setProductForm] = useState<ProductForm>(emptyProductForm);
@@ -458,6 +473,23 @@ export default function AdminDashboard({ admin }: { admin: AdminUser }) {
     }
   }, [readAdminJson]);
 
+  const loadSiteSettings = useCallback(async () => {
+    try {
+      const response = await fetch("/api/admin/site-settings");
+      const json = await readAdminJson<{ data: SiteSettings }>(
+        response,
+        "Failed to load site settings",
+      );
+      setSiteSettings(json.data);
+    } catch (loadError) {
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Failed to load site settings",
+      );
+    }
+  }, [readAdminJson]);
+
   useEffect(() => {
     void Promise.resolve().then(loadInitialData);
   }, [loadInitialData]);
@@ -481,6 +513,10 @@ export default function AdminDashboard({ admin }: { admin: AdminUser }) {
   useEffect(() => {
     void Promise.resolve().then(loadUsers);
   }, [loadUsers]);
+
+  useEffect(() => {
+    void Promise.resolve().then(loadSiteSettings);
+  }, [loadSiteSettings]);
 
   async function onCreateProduct(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -626,6 +662,34 @@ export default function AdminDashboard({ admin }: { admin: AdminUser }) {
     }
   }
 
+  async function onSaveSiteSettings(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSavingSettings(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/admin/site-settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(siteSettings),
+      });
+      const body = await readAdminJson<{ data: SiteSettings; message: string }>(
+        response,
+        "Failed to save site settings",
+      );
+
+      setSiteSettings(body.data);
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "Failed to save site settings",
+      );
+    } finally {
+      setSavingSettings(false);
+    }
+  }
+
   async function onLogout() {
     await fetch("/api/admin/auth/logout", { method: "POST" });
     router.replace("/admin/login");
@@ -707,6 +771,17 @@ export default function AdminDashboard({ admin }: { admin: AdminUser }) {
 
     if (activeView === "users") {
       return <UsersView users={usersList} onViewOrders={viewUserOrders} />;
+    }
+
+    if (activeView === "settings") {
+      return (
+        <SettingsView
+          settings={siteSettings}
+          savingSettings={savingSettings}
+          onChange={setSiteSettings}
+          onSave={onSaveSiteSettings}
+        />
+      );
     }
 
     return (
@@ -2020,6 +2095,58 @@ function PanelHeader({
         {actionLabel}
       </button>
     </div>
+  );
+}
+
+function SettingsView({
+  settings,
+  savingSettings,
+  onChange,
+  onSave,
+}: {
+  settings: SiteSettings;
+  savingSettings: boolean;
+  onChange: Dispatch<SetStateAction<SiteSettings>>;
+  onSave: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white p-5">
+      <div className="mb-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+          Storefront
+        </p>
+        <h2 className="font-heading text-3xl font-semibold">Site settings</h2>
+      </div>
+
+      <form onSubmit={onSave} className="space-y-5">
+        <TextAreaField
+          label="Promotional line"
+          value={settings.promoBannerText}
+          onChange={(value) =>
+            onChange((prev) => ({ ...prev, promoBannerText: value }))
+          }
+          required
+        />
+
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+            Preview
+          </p>
+          <div className="bg-[#1A1A1A] px-4 py-2 text-center text-sm font-medium text-white">
+            {settings.promoBannerText ||
+              "Free Shipping on Orders over 30KWD - Arrives Next Day From 5 to 9 PM"}
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          disabled={savingSettings}
+          className="inline-flex min-h-11 items-center justify-center rounded-lg bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {savingSettings ? "Saving..." : "Save settings"}
+        </button>
+      </form>
+    </section>
   );
 }
 
