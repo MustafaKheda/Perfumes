@@ -131,6 +131,7 @@ export const products = pgTable(
     imagePublicId: text("image_public_id"),
     price: numeric("price", { precision: 10, scale: 2 }).notNull(),
     stock: integer("stock").notNull().default(0),
+    brand: text("brand").notNull().default("Scentora"),
     tag: productTagEnum("tag"),
     notes: text("notes").array().notNull().default(sql`ARRAY[]::text[]`),
     isBestSeller: boolean("is_best_seller").notNull().default(false),
