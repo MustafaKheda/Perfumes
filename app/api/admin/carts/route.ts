@@ -16,6 +16,7 @@ export async function GET() {
     .select({
       cartItemId: cartItems.id,
       quantity: cartItems.quantity,
+      scentOption: cartItems.scentOption,
       addedAt: cartItems.createdAt,
       updatedAt: cartItems.updatedAt,
       userId: users.id,
@@ -46,6 +47,7 @@ export async function GET() {
         image: string;
         price: number;
         quantity: number;
+        scentOption: string | null;
         addedAt: string;
         updatedAt: string;
       }>;
@@ -64,6 +66,7 @@ export async function GET() {
       image: row.productImage,
       price: Number(row.productPrice),
       quantity: row.quantity,
+      scentOption: row.scentOption,
       addedAt: row.addedAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
     };

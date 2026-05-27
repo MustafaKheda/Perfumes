@@ -1,14 +1,16 @@
 "use client";
 
-import { useState } from "react";
-
 type ProductScentSelectorProps = {
   options: string[];
+  selected: string;
+  onChange: (value: string) => void;
 };
 
-export default function ProductScentSelector({ options }: ProductScentSelectorProps) {
-  const [selected, setSelected] = useState(options[0] ?? "");
-
+export default function ProductScentSelector({
+  options,
+  selected,
+  onChange,
+}: ProductScentSelectorProps) {
   if (options.length === 0) {
     return null;
   }
@@ -33,7 +35,7 @@ export default function ProductScentSelector({ options }: ProductScentSelectorPr
             <button
               key={option}
               type="button"
-              onClick={() => setSelected(option)}
+              onClick={() => onChange(option)}
               aria-pressed={active}
               className={`min-h-12 rounded-lg border px-4 text-sm font-semibold transition ${
                 active

@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { badRequest } from "@/lib/api/http";
 import { db } from "@/lib/db";
@@ -129,6 +129,7 @@ async function createOrder(request: Request) {
           image: products.image,
           price: products.price,
           quantity: cartItems.quantity,
+          scentOption: cartItems.scentOption,
         })
         .from(cartItems)
         .innerJoin(products, eq(cartItems.productId, products.id))
@@ -184,6 +185,7 @@ async function createOrder(request: Request) {
         productId: item.productId,
         name: item.name,
         image: item.image,
+        scentOption: item.scentOption,
         price: item.price,
         quantity: item.quantity,
       })),
@@ -226,6 +228,10 @@ async function getGuestCartRows(value: unknown) {
             item && typeof item === "object" && "quantity" in item
               ? normalizeQuantity(item.quantity)
               : 1,
+          scentOption:
+            item && typeof item === "object" && "scentOption" in item
+              ? readString(item.scentOption)
+              : "",
         }))
         .filter((item) => item.productId)
     : [];
@@ -234,6 +240,7 @@ async function getGuestCartRows(value: unknown) {
     return [];
   }
 
+  const productIds = [...new Set(items.map((item) => item.productId))];
   const rows = await db
     .select({
       productId: products.id,
@@ -242,18 +249,22 @@ async function getGuestCartRows(value: unknown) {
       price: products.price,
     })
     .from(products)
-    .where(eq(products.isActive, true));
+    .where(and(eq(products.isActive, true), inArray(products.id, productIds)));
+  const productById = new Map(rows.map((row) => [row.productId, row]));
 
-  const quantityByProductId = new Map(
-    items.map((item) => [item.productId, item.quantity]),
-  );
+  return items.flatMap((item) => {
+    const row = productById.get(item.productId);
 
-  return rows
-    .filter((row) => quantityByProductId.has(row.productId))
-    .map((row) => ({
+    if (!row) {
+      return [];
+    }
+
+    return {
       ...row,
-      quantity: quantityByProductId.get(row.productId) ?? 1,
-    }));
+      quantity: item.quantity,
+      scentOption: item.scentOption,
+    };
+  });
 }
 
 function normalizeQuantity(value: unknown) {

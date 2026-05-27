@@ -179,11 +179,16 @@ export const cartItems = pgTable(
     productId: uuid("product_id")
       .notNull()
       .references(() => products.id),
+    scentOption: text("scent_option").notNull().default(""),
     quantity: integer("quantity").notNull().default(1),
     ...timestamps,
   },
   (table) => [
-    uniqueIndex("cart_items_user_product_unique").on(table.userId, table.productId),
+    uniqueIndex("cart_items_user_product_scent_unique").on(
+      table.userId,
+      table.productId,
+      table.scentOption,
+    ),
     index("cart_items_product_id_idx").on(table.productId),
   ],
 );
@@ -269,6 +274,7 @@ export const orderItems = pgTable(
       .references(() => products.id),
     name: text("name").notNull(),
     image: text("image").notNull(),
+    scentOption: text("scent_option").notNull().default(""),
     price: numeric("price", { precision: 10, scale: 2 }).notNull(),
     quantity: integer("quantity").notNull(),
   },

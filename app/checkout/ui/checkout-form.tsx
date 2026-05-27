@@ -94,6 +94,7 @@ export default function CheckoutForm() {
       const guestItems = getGuestCart().map((item) => ({
         productId: item.productId,
         quantity: item.quantity,
+        scentOption: item.scentOption,
       }));
       const response = await fetch("/api/checkout", {
         method: "POST",

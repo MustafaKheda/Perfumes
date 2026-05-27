@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import ProductDetailActions from "@/components/ProductDetailActions";
-import ProductScentSelector from "@/components/ProductScentSelector";
+import ProductDetailPurchase from "@/components/ProductDetailPurchase";
 import { Breadcrumb } from "@/components/common/Breadcrumb";
 import Newsletter from "@/components/common/Newsletter";
 import { findProductByIdOrSlug } from "@/lib/api/catalog";
@@ -205,8 +204,6 @@ export default async function ProductPage({ params }: ProductPageProps) {
               </p>
             </div>
 
-            <ProductScentSelector options={scentOptions} />
-
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               <DetailItem label="Stock" value={product.stock > 0 ? `${product.stock} available` : "Out of stock"} />
               <DetailItem label="Category" value={product.categoryDetails.name} />
@@ -220,18 +217,17 @@ export default async function ProductPage({ params }: ProductPageProps) {
               />
             </div>
 
-            <div className="mt-7">
-              <ProductDetailActions
-                productId={product.id}
-                name={product.name}
-                image={product.image}
-                price={product.price}
-                notes={product.notes.join(", ")}
-                tag={product.tag}
-                slug={product.slug}
-                isWishlisted={wishlistProductIds.has(product.id)}
-              />
-            </div>
+            <ProductDetailPurchase
+              productId={product.id}
+              name={product.name}
+              image={product.image}
+              price={product.price}
+              notes={product.notes.join(", ")}
+              tag={product.tag}
+              slug={product.slug}
+              isWishlisted={wishlistProductIds.has(product.id)}
+              scentOptions={scentOptions}
+            />
 
           </div>
         </div>

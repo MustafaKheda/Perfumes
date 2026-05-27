@@ -13,9 +13,11 @@ import {
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
+  ArrowUpRight,
   Boxes,
   CheckCircle2,
   ClipboardList,
+  DollarSign,
   LayoutDashboard,
   ListOrdered,
   LogOut,
@@ -86,6 +88,7 @@ type OrderItem = {
   name: string;
   quantity: number;
   price: number;
+  scentOption: string | null;
 };
 
 type Order = {
@@ -113,6 +116,7 @@ type AdminCartItem = {
   image: string;
   price: number;
   quantity: number;
+  scentOption: string | null;
   addedAt: string;
   updatedAt: string;
 };
@@ -1155,50 +1159,171 @@ function OverviewView({
   const lowStockProducts = products.filter((product) => product.stock <= 5).slice(0, 6);
   const recentOrders = orders.slice(0, 6);
   const recentUsers = users.slice(0, 6);
+  const orderStatusCounts = orderStatuses.map((status) => ({
+    status,
+    count: orders.filter((order) => order.status === status).length,
+  }));
+  const maxOrderStatusCount = Math.max(
+    ...orderStatusCounts.map((item) => item.count),
+    1,
+  );
+  const inventoryHealth =
+    stats.totalProducts > 0
+      ? Math.round((stats.activeProducts / stats.totalProducts) * 100)
+      : 0;
+  const cartConversionSignal =
+    stats.openCarts > 0
+      ? Math.round((stats.pendingOrders / stats.openCarts) * 100)
+      : stats.pendingOrders > 0
+        ? 100
+        : 0;
+  const topProducts = [...products]
+    .sort((a, b) => b.stock - a.stock)
+    .slice(0, 5);
 
   return (
-    <div className="space-y-5">
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
-        <MetricCard
-          icon={Users}
-          label="Users"
-          value={String(stats.usersCount)}
-          tone="blue"
-        />
-        <MetricCard
-          icon={Package}
-          label="Total Products"
-          value={String(stats.totalProducts)}
-          tone="slate"
-        />
-        <MetricCard
-          icon={CheckCircle2}
-          label="Active Products"
-          value={String(stats.activeProducts)}
-          tone="green"
-        />
-        <MetricCard
-          icon={AlertTriangle}
-          label="Low Stock"
-          value={String(stats.lowStockProducts)}
-          tone="amber"
-        />
-        <MetricCard
-          icon={ShoppingBag}
-          label="Open Carts"
-          value={String(stats.openCarts)}
-          tone="blue"
-        />
-        <MetricCard
-          icon={Mail}
-          label="Subscribers"
-          value={String(stats.subscribers)}
-          tone="green"
-        />
+    <div className="space-y-6">
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(360px,0.6fr)]">
+        <article className="overflow-hidden rounded-lg border border-slate-200 bg-slate-950 text-white shadow-sm">
+          <div className="grid gap-6 p-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+            <div>
+              <div className="mb-6 flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-200">
+                  Live overview
+                </span>
+                <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-semibold text-emerald-200">
+                  {stats.pendingOrders} pending orders
+                </span>
+              </div>
+              <h2 className="font-heading text-4xl font-semibold leading-tight">
+                Scentora performance dashboard
+              </h2>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
+                Track catalog health, order movement, customer activity, and open
+                carts from one control surface.
+              </p>
+
+              <div className="mt-7 grid gap-3 sm:grid-cols-3">
+                <HeroMetric
+                  label="Order value"
+                  value={formatInr(stats.orderValue)}
+                  icon={DollarSign}
+                />
+                <HeroMetric
+                  label="Active catalog"
+                  value={`${inventoryHealth}%`}
+                  icon={CheckCircle2}
+                />
+                <HeroMetric
+                  label="Cart signal"
+                  value={`${cartConversionSignal}%`}
+                  icon={ShoppingBag}
+                />
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-white/10 bg-white/8 p-4">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                    Order pipeline
+                  </p>
+                  <p className="mt-1 text-lg font-semibold">Fulfillment flow</p>
+                </div>
+                <ArrowUpRight className="h-5 w-5 text-emerald-300" aria-hidden="true" />
+              </div>
+              <div className="space-y-3">
+                {orderStatusCounts
+                  .filter((item) => item.count > 0)
+                  .slice(0, 5)
+                  .map((item) => (
+                    <div key={item.status}>
+                      <div className="mb-1 flex items-center justify-between text-xs">
+                        <span className="font-semibold text-slate-200">{item.status}</span>
+                        <span className="text-slate-400">{item.count}</span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                        <div
+                          className="h-full rounded-full bg-emerald-300"
+                          style={{
+                            width: `${Math.max(
+                              8,
+                              (item.count / maxOrderStatusCount) * 100,
+                            )}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                {orders.length === 0 ? (
+                  <p className="rounded-lg bg-white/8 p-3 text-sm text-slate-300">
+                    No order data yet.
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mb-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Inventory scene
+            </p>
+            <h2 className="font-heading text-2xl font-semibold">Catalog balance</h2>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <MetricCard icon={Package} label="Products" value={String(stats.totalProducts)} tone="slate" />
+            <MetricCard icon={CheckCircle2} label="Active" value={String(stats.activeProducts)} tone="green" />
+            <MetricCard icon={AlertTriangle} label="Low Stock" value={String(stats.lowStockProducts)} tone="amber" />
+            <MetricCard icon={Mail} label="Subscribers" value={String(stats.subscribers)} tone="blue" />
+          </div>
+        </article>
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-3">
-        <article className="rounded-lg border border-slate-200 bg-white">
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Stock map
+              </p>
+              <h2 className="font-heading text-2xl font-semibold">Product capacity</h2>
+            </div>
+            <button
+              type="button"
+              onClick={() => onChangeView("products")}
+              className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              View products
+            </button>
+          </div>
+          <div className="space-y-4">
+            {topProducts.map((product) => {
+              const maxStock = Math.max(...topProducts.map((item) => item.stock), 1);
+
+              return (
+                <div key={product.id}>
+                  <div className="mb-2 flex items-center justify-between gap-3 text-sm">
+                    <span className="truncate font-semibold">{product.name}</span>
+                    <span className="text-slate-500">{product.stock} units</span>
+                  </div>
+                  <div className="h-3 overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className="h-full rounded-full bg-slate-950"
+                      style={{
+                        width: `${Math.max(6, (product.stock / maxStock) * 100)}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+            {topProducts.length === 0 ? <EmptyState title="No products found" /> : null}
+          </div>
+        </article>
+
+        <article className="rounded-lg border border-slate-200 bg-white shadow-sm">
           <PanelHeader
             eyebrow="Inventory"
             title="Low stock products"
@@ -1227,8 +1352,10 @@ function OverviewView({
             <EmptyState title="No low stock products" />
           )}
         </article>
+      </section>
 
-        <article className="rounded-lg border border-slate-200 bg-white">
+      <section className="grid gap-5 xl:grid-cols-2">
+        <article className="rounded-lg border border-slate-200 bg-white shadow-sm">
           <PanelHeader
             eyebrow="Users"
             title="Recent accounts"
@@ -1260,7 +1387,7 @@ function OverviewView({
           )}
         </article>
 
-        <article className="rounded-lg border border-slate-200 bg-white">
+        <article className="rounded-lg border border-slate-200 bg-white shadow-sm">
           <PanelHeader
             eyebrow="Orders"
             title="Recent activity"
@@ -1296,7 +1423,7 @@ function OverviewView({
 
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white">
+      <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
         <PanelHeader
           eyebrow="Customer carts"
           title="Recent cart activity"
@@ -1870,7 +1997,20 @@ function OrdersView({
                     <div className="text-xs text-slate-500">{order.customerEmail}</div>
                   </td>
                   <td className="px-5 py-3">
-                    {order.items.reduce((sum, item) => sum + item.quantity, 0)}
+                    <div className="space-y-1">
+                      {order.items.map((item) => (
+                        <div key={item.id}>
+                          <span className="font-medium">
+                            {item.quantity} x {item.name}
+                          </span>
+                          {item.scentOption ? (
+                            <span className="ml-1 text-xs font-semibold text-slate-500">
+                              ({item.scentOption})
+                            </span>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
                   </td>
                   <td className="px-5 py-3 font-semibold">
                     {formatInr(order.totalAmount)}
@@ -1970,7 +2110,14 @@ function CartsView({ carts }: { carts: AdminCart[] }) {
                   <tbody className="divide-y divide-slate-100">
                     {cart.items.map((item) => (
                       <tr key={item.id}>
-                        <td className="px-4 py-3 font-medium">{item.name}</td>
+                        <td className="px-4 py-3 font-medium">
+                          {item.name}
+                          {item.scentOption ? (
+                            <span className="ml-1 text-xs font-semibold text-slate-500">
+                              ({item.scentOption})
+                            </span>
+                          ) : null}
+                        </td>
                         <td className="px-4 py-3">{item.quantity}</td>
                         <td className="px-4 py-3">{formatInr(item.price)}</td>
                         <td className="px-4 py-3 font-semibold">
@@ -2393,8 +2540,8 @@ function MetricCard({
   }[tone];
 
   return (
-    <article className="rounded-lg border border-slate-200 bg-white p-5">
-      <div className="mb-4 flex items-center justify-between gap-3">
+    <article className="rounded-lg border border-slate-200 bg-white p-4">
+      <div className="mb-3 flex items-center justify-between gap-3">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
           {label}
         </p>
@@ -2402,8 +2549,30 @@ function MetricCard({
           <Icon className="h-4 w-4" aria-hidden="true" />
         </div>
       </div>
-      <p className="text-3xl font-semibold tracking-normal">{value}</p>
+      <p className="text-2xl font-semibold tracking-normal">{value}</p>
     </article>
+  );
+}
+
+function HeroMetric({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-lg border border-white/10 bg-white/8 p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+          {label}
+        </span>
+        <Icon className="h-4 w-4 text-emerald-300" aria-hidden="true" />
+      </div>
+      <p className="text-2xl font-semibold">{value}</p>
+    </div>
   );
 }
 

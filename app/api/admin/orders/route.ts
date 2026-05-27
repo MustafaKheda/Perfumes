@@ -137,6 +137,7 @@ function serializeOrder(
       productId: string;
       name: string;
       image: string;
+      scentOption: string | null;
       price: string;
       quantity: number;
     }>;
@@ -167,6 +168,7 @@ function serializeOrder(
       productId: item.productId,
       name: item.name,
       image: item.image,
+      scentOption: item.scentOption,
       price: Number(item.price),
       quantity: item.quantity,
     })),

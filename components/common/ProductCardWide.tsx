@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Heart, ShoppingBag } from "lucide-react";
 import CommonLink from "./CommonLink";
 import { addGuestCartItem } from "@/lib/guest-cart";
@@ -40,14 +40,10 @@ export default function ProductCardWide({
     isWishlisted = false,
 }: ProductCardWideProps) {
     const [adding, setAdding] = useState(false);
-    const [wishlistActive, setWishlistActive] = useState(isWishlisted);
+    const [wishlistActive, setWishlistActive] = useState(() =>
+        isWishlisted || (productId ? isGuestWishlisted(productId) : false),
+    );
     const [updatingWishlist, setUpdatingWishlist] = useState(false);
-
-    useEffect(() => {
-        if (productId && isGuestWishlisted(productId)) {
-            setWishlistActive(true);
-        }
-    }, [productId]);
 
     async function addToCart() {
         if (!productId) {
