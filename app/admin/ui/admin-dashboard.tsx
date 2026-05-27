@@ -28,6 +28,7 @@ import {
   Search,
   Settings,
   ShoppingBag,
+  Trophy,
   Upload,
   Users,
   X,
@@ -141,6 +142,33 @@ type NewsletterSubscriber = {
 
 type SiteSettings = {
   promoBannerText: string;
+  facebookUrl: string;
+  xUrl: string;
+  youtubeUrl: string;
+  instagramUrl: string;
+  contactPhone: string;
+  contactEmail: string;
+};
+
+type BestSellerAdminProduct = {
+  id: string;
+  name: string;
+  slug: string;
+  image: string;
+  isBestSeller: boolean;
+  isFeatured: boolean;
+  isActive: boolean;
+  metrics: {
+    productId: string;
+    monthlySold: number;
+    trendingSold: number;
+    totalSold: number;
+  };
+};
+
+type BestSellerSettings = {
+  mode: "auto" | "manual";
+  products: BestSellerAdminProduct[];
 };
 
 type AdminCustomer = {
@@ -189,7 +217,8 @@ type NavId =
   | "messages"
   | "newsletter"
   | "users"
-  | "settings";
+  | "settings"
+  | "best-sellers";
 
 const navItems: Array<{ id: NavId; label: string; icon: LucideIcon }> = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -199,6 +228,7 @@ const navItems: Array<{ id: NavId; label: string; icon: LucideIcon }> = [
   { id: "collections", label: "Collections", icon: ListOrdered },
   { id: "orders", label: "Orders", icon: ClipboardList },
   { id: "carts", label: "Carts", icon: ShoppingBag },
+  { id: "best-sellers", label: "Best Sellers", icon: Trophy },
   { id: "messages", label: "Messages", icon: MessageSquareText },
   { id: "newsletter", label: "Newsletter", icon: Mail },
   { id: "settings", label: "Settings", icon: Settings },
@@ -238,6 +268,17 @@ const emptyProductForm: ProductForm = {
 const defaultSiteSettings: SiteSettings = {
   promoBannerText:
     "Free Shipping on Orders over 30KWD - Arrives Next Day From 5 to 9 PM",
+  facebookUrl: "",
+  xUrl: "",
+  youtubeUrl: "",
+  instagramUrl: "",
+  contactPhone: "+96500000000",
+  contactEmail: "support@scentora.com",
+};
+
+const defaultBestSellerSettings: BestSellerSettings = {
+  mode: "auto",
+  products: [],
 };
 
 export default function AdminDashboard({ admin }: { admin: AdminUser }) {
@@ -255,6 +296,8 @@ export default function AdminDashboard({ admin }: { admin: AdminUser }) {
   >([]);
   const [siteSettings, setSiteSettings] =
     useState<SiteSettings>(defaultSiteSettings);
+  const [bestSellerSettings, setBestSellerSettings] =
+    useState<BestSellerSettings>(defaultBestSellerSettings);
   const [usersList, setUsersList] = useState<AdminCustomer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -263,6 +306,8 @@ export default function AdminDashboard({ admin }: { admin: AdminUser }) {
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const [updatingCollectionId, setUpdatingCollectionId] = useState<string | null>(null);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [savingBestSellers, setSavingBestSellers] = useState(false);
+  const [evaluatingBestSellers, setEvaluatingBestSellers] = useState(false);
   const [productSearch, setProductSearch] = useState("");
 
   const [productForm, setProductForm] = useState<ProductForm>(emptyProductForm);
@@ -490,6 +535,23 @@ export default function AdminDashboard({ admin }: { admin: AdminUser }) {
     }
   }, [readAdminJson]);
 
+  const loadBestSellerSettings = useCallback(async () => {
+    try {
+      const response = await fetch("/api/admin/best-sellers");
+      const json = await readAdminJson<{ data: BestSellerSettings }>(
+        response,
+        "Failed to load best seller settings",
+      );
+      setBestSellerSettings(json.data);
+    } catch (loadError) {
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Failed to load best seller settings",
+      );
+    }
+  }, [readAdminJson]);
+
   useEffect(() => {
     void Promise.resolve().then(loadInitialData);
   }, [loadInitialData]);
@@ -517,6 +579,10 @@ export default function AdminDashboard({ admin }: { admin: AdminUser }) {
   useEffect(() => {
     void Promise.resolve().then(loadSiteSettings);
   }, [loadSiteSettings]);
+
+  useEffect(() => {
+    void Promise.resolve().then(loadBestSellerSettings);
+  }, [loadBestSellerSettings]);
 
   async function onCreateProduct(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -690,6 +756,70 @@ export default function AdminDashboard({ admin }: { admin: AdminUser }) {
     }
   }
 
+  async function onEvaluateBestSellers() {
+    setEvaluatingBestSellers(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/admin/best-sellers", { method: "POST" });
+      const body = await readAdminJson<{
+        data: BestSellerSettings;
+        message: string;
+      }>(response, "Failed to evaluate best sellers");
+
+      setBestSellerSettings(body.data);
+      await loadInitialData();
+    } catch (evaluateError) {
+      setError(
+        evaluateError instanceof Error
+          ? evaluateError.message
+          : "Failed to evaluate best sellers",
+      );
+    } finally {
+      setEvaluatingBestSellers(false);
+    }
+  }
+
+  async function onSaveBestSellers(nextSettings: BestSellerSettings) {
+    setSavingBestSellers(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/admin/best-sellers", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          nextSettings.mode === "auto"
+            ? { mode: "auto" }
+            : {
+                mode: "manual",
+                bestSellerIds: nextSettings.products
+                  .filter((product) => product.isBestSeller)
+                  .map((product) => product.id),
+                trendingIds: nextSettings.products
+                  .filter((product) => product.isFeatured)
+                  .map((product) => product.id),
+              },
+        ),
+      });
+      const body = await readAdminJson<{
+        data: BestSellerSettings;
+        message: string;
+      }>(response, "Failed to save best seller settings");
+
+      setBestSellerSettings(body.data);
+      await loadInitialData();
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "Failed to save best seller settings",
+      );
+    } finally {
+      setSavingBestSellers(false);
+    }
+  }
+
   async function onLogout() {
     await fetch("/api/admin/auth/logout", { method: "POST" });
     router.replace("/admin/login");
@@ -759,6 +889,19 @@ export default function AdminDashboard({ admin }: { admin: AdminUser }) {
 
     if (activeView === "carts") {
       return <CartsView carts={carts} />;
+    }
+
+    if (activeView === "best-sellers") {
+      return (
+        <BestSellerView
+          settings={bestSellerSettings}
+          saving={savingBestSellers}
+          evaluating={evaluatingBestSellers}
+          onChange={setBestSellerSettings}
+          onSave={onSaveBestSellers}
+          onEvaluate={onEvaluateBestSellers}
+        />
+      );
     }
 
     if (activeView === "messages") {
@@ -1810,6 +1953,161 @@ function CartsView({ carts }: { carts: AdminCart[] }) {
   );
 }
 
+function BestSellerView({
+  settings,
+  saving,
+  evaluating,
+  onChange,
+  onSave,
+  onEvaluate,
+}: {
+  settings: BestSellerSettings;
+  saving: boolean;
+  evaluating: boolean;
+  onChange: Dispatch<SetStateAction<BestSellerSettings>>;
+  onSave: (settings: BestSellerSettings) => void;
+  onEvaluate: () => void;
+}) {
+  function toggleProduct(
+    productId: string,
+    key: "isBestSeller" | "isFeatured",
+    checked: boolean,
+  ) {
+    onChange((prev) => ({
+      mode: "manual",
+      products: prev.products.map((product) =>
+        product.id === productId ? { ...product, [key]: checked } : product,
+      ),
+    }));
+  }
+
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white">
+      <div className="flex flex-col gap-4 border-b border-slate-200 p-5 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+            Sales automation
+          </p>
+          <h2 className="font-heading text-3xl font-semibold">
+            Best sellers & trending
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Auto mode evaluates monthly sales. Manual mode lets you customize.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={onEvaluate}
+            disabled={evaluating}
+            className="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 px-4 text-sm font-semibold hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {evaluating ? "Evaluating..." : "Run auto now"}
+          </button>
+          <button
+            type="button"
+            onClick={() => onSave(settings)}
+            disabled={saving}
+            className="inline-flex min-h-10 items-center justify-center rounded-lg bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {saving ? "Saving..." : "Save manual changes"}
+          </button>
+        </div>
+      </div>
+
+      <div className="border-b border-slate-200 p-5">
+        <div className="flex flex-wrap gap-3">
+          <ToggleField
+            label="Auto monthly mode"
+            checked={settings.mode === "auto"}
+            onChange={(checked) =>
+              onChange((prev) => ({
+                ...prev,
+                mode: checked ? "auto" : "manual",
+              }))
+            }
+          />
+          <StatusPill
+            label={settings.mode === "auto" ? "AUTO" : "MANUAL"}
+            tone={settings.mode === "auto" ? "green" : "warning"}
+          />
+        </div>
+      </div>
+
+      {settings.products.length > 0 ? (
+        <div className="max-h-[calc(100vh-260px)] overflow-auto">
+          <table className="w-full min-w-[900px] text-left text-sm">
+            <thead className="sticky top-0 z-10 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-5 py-3 font-semibold">Product</th>
+                <th className="px-5 py-3 font-semibold">Month sold</th>
+                <th className="px-5 py-3 font-semibold">30-day sold</th>
+                <th className="px-5 py-3 font-semibold">Total sold</th>
+                <th className="px-5 py-3 font-semibold">Best seller</th>
+                <th className="px-5 py-3 font-semibold">Trending</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {settings.products.map((product) => (
+                <tr key={product.id} className="hover:bg-slate-50/80">
+                  <td className="px-5 py-3">
+                    <div className="flex items-center gap-3">
+                      {/* eslint-disable-next-line @next/next/no-img-element -- Admin product images can be local paths or runtime Cloudinary URLs. */}
+                      <img
+                        src={product.image}
+                        alt=""
+                        className="h-11 w-11 rounded-lg border border-slate-200 object-cover"
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold">{product.name}</p>
+                        <p className="truncate text-xs text-slate-500">
+                          {product.slug}
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-5 py-3 font-semibold">
+                    {product.metrics.monthlySold}
+                  </td>
+                  <td className="px-5 py-3 font-semibold">
+                    {product.metrics.trendingSold}
+                  </td>
+                  <td className="px-5 py-3 font-semibold">
+                    {product.metrics.totalSold}
+                  </td>
+                  <td className="px-5 py-3">
+                    <input
+                      type="checkbox"
+                      checked={product.isBestSeller}
+                      onChange={(event) =>
+                        toggleProduct(product.id, "isBestSeller", event.target.checked)
+                      }
+                      className="h-4 w-4 accent-slate-950"
+                    />
+                  </td>
+                  <td className="px-5 py-3">
+                    <input
+                      type="checkbox"
+                      checked={product.isFeatured}
+                      onChange={(event) =>
+                        toggleProduct(product.id, "isFeatured", event.target.checked)
+                      }
+                      className="h-4 w-4 accent-slate-950"
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <EmptyState title="No products found" />
+      )}
+    </section>
+  );
+}
+
 function ContactInquiriesView({ inquiries }: { inquiries: ContactInquiry[] }) {
   return (
     <section className="rounded-lg border border-slate-200 bg-white">
@@ -2135,6 +2433,65 @@ function SettingsView({
           <div className="bg-[#1A1A1A] px-4 py-2 text-center text-sm font-medium text-white">
             {settings.promoBannerText ||
               "Free Shipping on Orders over 30KWD - Arrives Next Day From 5 to 9 PM"}
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <InputField
+            label="Call phone number"
+            value={settings.contactPhone}
+            onChange={(value) =>
+              onChange((prev) => ({ ...prev, contactPhone: value }))
+            }
+            placeholder="+96500000000"
+          />
+          <InputField
+            label="Email address"
+            value={settings.contactEmail}
+            onChange={(value) =>
+              onChange((prev) => ({ ...prev, contactEmail: value }))
+            }
+            placeholder="support@scentora.com"
+          />
+        </div>
+
+        <div className="rounded-lg border border-slate-200 p-4">
+          <p className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+            Footer social links
+          </p>
+          <div className="grid gap-4 md:grid-cols-2">
+            <InputField
+              label="Facebook URL"
+              value={settings.facebookUrl}
+              onChange={(value) =>
+                onChange((prev) => ({ ...prev, facebookUrl: value }))
+              }
+              placeholder="https://facebook.com/your-page"
+            />
+            <InputField
+              label="X URL"
+              value={settings.xUrl}
+              onChange={(value) =>
+                onChange((prev) => ({ ...prev, xUrl: value }))
+              }
+              placeholder="https://x.com/your-handle"
+            />
+            <InputField
+              label="YouTube URL"
+              value={settings.youtubeUrl}
+              onChange={(value) =>
+                onChange((prev) => ({ ...prev, youtubeUrl: value }))
+              }
+              placeholder="https://youtube.com/@your-channel"
+            />
+            <InputField
+              label="Instagram URL"
+              value={settings.instagramUrl}
+              onChange={(value) =>
+                onChange((prev) => ({ ...prev, instagramUrl: value }))
+              }
+              placeholder="https://instagram.com/your-handle"
+            />
           </div>
         </div>
 

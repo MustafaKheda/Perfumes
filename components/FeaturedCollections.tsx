@@ -5,6 +5,7 @@ const collections = [
     {
         name: "Men’s Collection",
         count: "120+ Products",
+        href: "/shop/men",
         images: [
             "/images/Perfume/34.webp",
             "/images/Perfume/26.webp",
@@ -15,6 +16,7 @@ const collections = [
     {
         name: "Women’s Collection",
         count: "140+ Products",
+        href: "/shop/women",
         images: [
             "/images/Perfume/18.webp",
             "/images/Perfume/30.webp",
@@ -25,6 +27,7 @@ const collections = [
     {
         name: "Luxury Collection",
         count: "340+ Products",
+        href: "/collections/luxury",
         images: [
             "/images/Perfume/32.webp",
             "/images/Perfume/37.webp",

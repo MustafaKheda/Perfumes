@@ -134,6 +134,9 @@ export default function Navbar() {
             <Link href="/shop/all" className="hover:opacity-70" prefetch>
               Shop
             </Link>
+            <Link href="/best-sellers" className="hover:opacity-70" prefetch>
+              Best Sellers
+            </Link>
             <Link href="/collections/all" className="hover:opacity-70" prefetch>
               Collection
             </Link>
@@ -219,6 +222,7 @@ export default function Navbar() {
               {[
                 ["Home", "/"],
                 ["Shop", "/shop/all"],
+                ["Best Sellers", "/best-sellers"],
                 ["Collection", "/collections/all"],
                 ["Guide", "/guide"],
                 ["About", "/about"],

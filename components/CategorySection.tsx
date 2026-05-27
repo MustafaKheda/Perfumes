@@ -7,13 +7,13 @@ export default function CategorySection() {
         {
             title: "MEN'S FRAGRANCES",
             subtitle: "Best Men's Collection",
-            href: "/collections/men",
+            href: "/shop/men",
             highlight: false,
         },
         {
             title: "WOMEN'S FRAGRANCES",
             subtitle: "Best Women's Collection",
-            href: "/collections/women",
+            href: "/shop/women",
             highlight: false,
         },
         {
