@@ -15,12 +15,15 @@ type CreateProductBody = {
   name?: unknown;
   slug?: unknown;
   description?: unknown;
+  detailedDescription?: unknown;
+  productDetailHtml?: unknown;
   image?: unknown;
   imagePublicId?: unknown;
   price?: unknown;
   stock?: unknown;
   tag?: unknown;
   notes?: unknown;
+  scentOptions?: unknown;
   isBestSeller?: unknown;
   isFeatured?: unknown;
   isActive?: unknown;
@@ -77,6 +80,8 @@ export async function POST(request: Request) {
 
   const name = toNonEmptyString(body.name);
   const description = toNonEmptyString(body.description);
+  const detailedDescription = toOptionalString(body.detailedDescription);
+  const productDetailHtml = toOptionalString(body.productDetailHtml);
   const image = toNonEmptyString(body.image);
   const categoryId = toNonEmptyString(body.categoryId);
   const slug = normalizeSlug(body.slug, name);
@@ -84,6 +89,7 @@ export async function POST(request: Request) {
   const stock = toInteger(body.stock);
   const tag = toTag(body.tag);
   const notes = toStringArray(body.notes);
+  const scentOptions = toStringArray(body.scentOptions);
   const imagePublicId = toOptionalString(body.imagePublicId);
   const collectionIds = toCollectionIds(body.collectionIds);
   const isBestSeller = toBoolean(body.isBestSeller, false);
@@ -128,12 +134,15 @@ export async function POST(request: Request) {
           name,
           slug,
           description,
+          detailedDescription,
+          productDetailHtml,
           image,
           imagePublicId,
           price: price.toFixed(2),
           stock,
           tag,
           notes,
+          scentOptions,
           isBestSeller,
           isFeatured,
           isActive,
@@ -195,10 +204,14 @@ function serializeProduct(product: ProductWithRelations) {
     name: product.name,
     slug: product.slug,
     image: product.image,
+    description: product.description,
+    detailedDescription: product.detailedDescription,
+    productDetailHtml: product.productDetailHtml,
     price: Number(product.price),
     stock: product.stock,
     tag: product.tag,
     notes: product.notes,
+    scentOptions: product.scentOptions,
     isBestSeller: product.isBestSeller,
     isFeatured: product.isFeatured,
     isActive: product.isActive,

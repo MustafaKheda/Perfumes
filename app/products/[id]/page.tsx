@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import ProductDetailActions from "@/components/ProductDetailActions";
+import ProductScentSelector from "@/components/ProductScentSelector";
 import { Breadcrumb } from "@/components/common/Breadcrumb";
 import Newsletter from "@/components/common/Newsletter";
 import { findProductByIdOrSlug } from "@/lib/api/catalog";
@@ -84,6 +85,10 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
   const productUrl = `${siteUrl}/products/${product.slug}`;
   const description = product.detailedDescription ?? product.description;
+  const productDetailHtml =
+    product.productDetailHtml ?? buildDefaultProductDetailHtml(product);
+  const scentOptions =
+    product.scentOptions.length > 0 ? product.scentOptions : product.notes.slice(0, 6);
   const availability =
     product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock";
 
@@ -189,9 +194,18 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
             <div className="mt-5">
               <p className="text-sm leading-7 text-textSecondary md:text-base">
-                {product.detailedDescription ?? product.description}
+                {product.description}{" "}
+                <a
+                  href="#detailed-description"
+                  className="font-semibold text-textPrimary underline underline-offset-4"
+                >
+                  Click here
+                </a>{" "}
+                for detailed description and scent profile.
               </p>
             </div>
+
+            <ProductScentSelector options={scentOptions} />
 
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               <DetailItem label="Stock" value={product.stock > 0 ? `${product.stock} available` : "Out of stock"} />
@@ -219,15 +233,24 @@ export default async function ProductPage({ params }: ProductPageProps) {
               />
             </div>
 
-            <div className="mt-7 rounded-lg bg-[#f6f1ea] p-4 text-sm leading-6 text-textSecondary">
-              <p className="font-semibold text-textPrimary">Why this fragrance</p>
-              <p>
-                Crafted for daily wear and special moments, with a balanced note
-                profile designed for lasting impression.
-              </p>
-            </div>
           </div>
         </div>
+
+        <section
+          id="detailed-description"
+          className="mt-12 rounded-lg border border-black/10 bg-white p-6 shadow-sm md:p-8"
+        >
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-textSecondary">
+            Detailed Description
+          </p>
+          <h2 className="mt-2 font-heading text-3xl font-semibold">
+            {product.name} fragrance story
+          </h2>
+          <div
+            className="mt-5 space-y-4 text-sm leading-7 text-textSecondary md:text-base [&_b]:text-textPrimary [&_li]:pl-1 [&_p]:max-w-4xl [&_ul]:grid [&_ul]:list-disc [&_ul]:gap-2 [&_ul]:pl-5 md:[&_ul]:grid-cols-2"
+            dangerouslySetInnerHTML={{ __html: productDetailHtml }}
+          />
+        </section>
 
         <section className="mt-12 grid gap-4 md:grid-cols-3">
           <InfoCard title="Next day delivery" text="Orders arrive next day from 5 to 9 PM where available." />
@@ -250,6 +273,24 @@ export default async function ProductPage({ params }: ProductPageProps) {
       />
     </main>
   );
+}
+
+function buildDefaultProductDetailHtml(product: NonNullable<Awaited<ReturnType<typeof findProductByIdOrSlug>>>) {
+  const notes = product.notes.length > 0 ? product.notes : ["Amber", "Vanilla", "Sandalwood"];
+  const [first, second, third] = notes;
+
+  return `
+    <p>${product.name} is designed as a polished signature perfume with a refined opening, smooth heart, and comfortable long-lasting base. The fragrance balances ${first ?? "warmth"} with ${second ?? "softness"} so it feels premium without becoming overwhelming. It is suitable for daily wear, evening plans, gifting, and customers who want a scent that feels confident, clean, and memorable.</p>
+    <p><b>Features</b></p>
+    <ul>
+      <li>Professional fragrance profile with ${notes.join(", ")}.</li>
+      <li>Balanced scent trail for personal wear and special occasions.</li>
+      <li>Premium presentation suitable for gifting.</li>
+      <li>Comfortable blend that works across seasons.</li>
+      <li>Authentic Scentora catalog product with store-managed details.</li>
+      <li>Recommended smell option: ${third ?? first ?? "Signature blend"}.</li>
+    </ul>
+  `;
 }
 
 function DetailItem({ label, value }: { label: string; value: string }) {

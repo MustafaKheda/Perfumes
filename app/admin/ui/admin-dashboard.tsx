@@ -61,9 +61,14 @@ type Product = {
   name: string;
   slug: string;
   image: string;
+  description: string;
+  detailedDescription: string | null;
+  productDetailHtml: string | null;
   price: number;
   stock: number;
   tag: string | null;
+  notes: string[];
+  scentOptions: string[];
   isActive: boolean;
   isBestSeller: boolean;
   isFeatured: boolean;
@@ -194,12 +199,15 @@ type ProductForm = {
   name: string;
   slug: string;
   description: string;
+  detailedDescription: string;
+  productDetailHtml: string;
   image: string;
   imagePublicId: string;
   price: string;
   stock: string;
   tag: string;
   notes: string;
+  scentOptions: string;
   categoryId: string;
   collectionIds: string[];
   isBestSeller: boolean;
@@ -252,12 +260,15 @@ const emptyProductForm: ProductForm = {
   name: "",
   slug: "",
   description: "",
+  detailedDescription: "",
+  productDetailHtml: "",
   image: "",
   imagePublicId: "",
   price: "",
   stock: "",
   tag: "",
   notes: "",
+  scentOptions: "Amber, Vanilla, Sandalwood",
   categoryId: "",
   collectionIds: [],
   isBestSeller: false,
@@ -595,6 +606,10 @@ export default function AdminDashboard({ admin }: { admin: AdminUser }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...productForm,
+          scentOptions: productForm.scentOptions
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean),
           notes: productForm.notes
             .split(",")
             .map((item) => item.trim())
@@ -1362,13 +1377,31 @@ function CreateProductView({
               placeholder="Auto-generated when blank"
             />
             <TextAreaField
-              label="Description"
+              label="Short description"
               value={form.description}
               onChange={(value) =>
                 onChange((prev) => ({ ...prev, description: value }))
               }
               className="md:col-span-2"
               required
+            />
+            <TextAreaField
+              label="Detailed description"
+              value={form.detailedDescription}
+              onChange={(value) =>
+                onChange((prev) => ({ ...prev, detailedDescription: value }))
+              }
+              className="md:col-span-2"
+              placeholder="Write 5-6 lines for the product detail page."
+            />
+            <TextAreaField
+              label="Professional detail HTML"
+              value={form.productDetailHtml}
+              onChange={(value) =>
+                onChange((prev) => ({ ...prev, productDetailHtml: value }))
+              }
+              className="md:col-span-2"
+              placeholder="<p><b>Features</b></p><ul><li>Long-lasting amber warmth</li><li>Smooth vanilla finish</li></ul>"
             />
             <InputField
               label="Image URL"
@@ -1389,6 +1422,14 @@ function CreateProductView({
               value={form.notes}
               onChange={(value) => onChange((prev) => ({ ...prev, notes: value }))}
               placeholder="Rose, Vanilla, Musk"
+            />
+            <InputField
+              label="Smell options"
+              value={form.scentOptions}
+              onChange={(value) =>
+                onChange((prev) => ({ ...prev, scentOptions: value }))
+              }
+              placeholder="Amber, Vanilla, Sandalwood"
             />
             <InputField
               label="Price"
@@ -2564,12 +2605,14 @@ function TextAreaField({
   label,
   className,
   required,
+  placeholder,
 }: {
   value: string;
   onChange: (value: string) => void;
   label: string;
   className?: string;
   required?: boolean;
+  placeholder?: string;
 }) {
   const id = `textarea-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 
@@ -2581,6 +2624,7 @@ function TextAreaField({
       <textarea
         id={id}
         className="min-h-28 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-950 focus:ring-2 focus:ring-slate-950/10"
+        placeholder={placeholder}
         value={value}
         required={required}
         onChange={(event) => onChange(event.target.value)}
