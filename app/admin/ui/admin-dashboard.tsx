@@ -1183,9 +1183,9 @@ function OverviewView({
 
   return (
     <div className="space-y-6">
-      <section className="grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(360px,0.6fr)]">
-        <article className="overflow-hidden rounded-lg border border-slate-200 bg-slate-950 text-white shadow-sm">
-          <div className="grid gap-6 p-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(380px,0.55fr)]">
+        <article className="overflow-hidden rounded-lg border border-slate-800 bg-[#07111f] text-white shadow-sm">
+          <div className="grid gap-6 p-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(360px,1.05fr)]">
             <div>
               <div className="mb-6 flex flex-wrap items-center gap-2">
                 <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-200">
@@ -1222,44 +1222,80 @@ function OverviewView({
               </div>
             </div>
 
-            <div className="rounded-lg border border-white/10 bg-white/8 p-4">
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                    Order pipeline
-                  </p>
-                  <p className="mt-1 text-lg font-semibold">Fulfillment flow</p>
+            <div className="grid gap-4">
+              <div className="relative min-h-[280px] overflow-hidden rounded-lg border border-cyan-300/20 bg-slate-900/70 p-5">
+                <div className="absolute inset-0 opacity-30 [background-image:linear-gradient(rgba(34,211,238,0.14)_1px,transparent_1px),linear-gradient(90deg,rgba(34,211,238,0.14)_1px,transparent_1px)] [background-size:28px_28px]" />
+                <div className="relative flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">
+                      Live insights map
+                    </p>
+                    <p className="mt-1 text-lg font-semibold">Store network</p>
+                  </div>
+                  <span className="rounded-full bg-cyan-300/10 px-3 py-1 text-xs font-semibold text-cyan-100">
+                    Synced
+                  </span>
                 </div>
-                <ArrowUpRight className="h-5 w-5 text-emerald-300" aria-hidden="true" />
-              </div>
-              <div className="space-y-3">
-                {orderStatusCounts
-                  .filter((item) => item.count > 0)
-                  .slice(0, 5)
-                  .map((item) => (
-                    <div key={item.status}>
-                      <div className="mb-1 flex items-center justify-between text-xs">
-                        <span className="font-semibold text-slate-200">{item.status}</span>
-                        <span className="text-slate-400">{item.count}</span>
-                      </div>
-                      <div className="h-2 overflow-hidden rounded-full bg-white/10">
-                        <div
-                          className="h-full rounded-full bg-emerald-300"
-                          style={{
-                            width: `${Math.max(
-                              8,
-                              (item.count / maxOrderStatusCount) * 100,
-                            )}%`,
-                          }}
-                        />
-                      </div>
+                <div className="relative mt-8 h-44">
+                  <div className="absolute left-[12%] top-[12%] h-3 w-3 rounded-full bg-cyan-300 shadow-[0_0_24px_rgba(103,232,249,0.9)]" />
+                  <div className="absolute left-[44%] top-[34%] h-4 w-4 rounded-full bg-emerald-300 shadow-[0_0_28px_rgba(110,231,183,0.9)]" />
+                  <div className="absolute right-[16%] top-[8%] h-3 w-3 rounded-full bg-amber-300 shadow-[0_0_24px_rgba(252,211,77,0.9)]" />
+                  <div className="absolute bottom-[14%] left-[25%] h-3 w-3 rounded-full bg-violet-300 shadow-[0_0_24px_rgba(196,181,253,0.9)]" />
+                  <div className="absolute bottom-[22%] right-[10%] h-4 w-4 rounded-full bg-rose-300 shadow-[0_0_28px_rgba(253,164,175,0.9)]" />
+                  <div className="absolute left-[14%] top-[17%] h-px w-[33%] rotate-[18deg] bg-cyan-200/40" />
+                  <div className="absolute left-[47%] top-[40%] h-px w-[34%] -rotate-[28deg] bg-emerald-200/40" />
+                  <div className="absolute bottom-[30%] left-[29%] h-px w-[30%] -rotate-[18deg] bg-violet-200/40" />
+                  <div className="absolute bottom-[31%] right-[13%] h-px w-[29%] rotate-[15deg] bg-rose-200/40" />
+                  <div className="absolute left-1/2 top-1/2 grid h-24 w-24 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-cyan-200/20 bg-cyan-300/10 text-center shadow-[0_0_60px_rgba(34,211,238,0.18)]">
+                    <div>
+                      <p className="text-2xl font-semibold">{orders.length}</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-100">
+                        Orders
+                      </p>
                     </div>
-                  ))}
-                {orders.length === 0 ? (
-                  <p className="rounded-lg bg-white/8 p-3 text-sm text-slate-300">
-                    No order data yet.
-                  </p>
-                ) : null}
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-white/10 bg-white/8 p-4">
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                      Order pipeline
+                    </p>
+                    <p className="mt-1 text-lg font-semibold">Fulfillment flow</p>
+                  </div>
+                  <ArrowUpRight className="h-5 w-5 text-emerald-300" aria-hidden="true" />
+                </div>
+                <div className="space-y-3">
+                  {orderStatusCounts
+                    .filter((item) => item.count > 0)
+                    .slice(0, 5)
+                    .map((item) => (
+                      <div key={item.status}>
+                        <div className="mb-1 flex items-center justify-between text-xs">
+                          <span className="font-semibold text-slate-200">{item.status}</span>
+                          <span className="text-slate-400">{item.count}</span>
+                        </div>
+                        <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                          <div
+                            className="h-full rounded-full bg-emerald-300"
+                            style={{
+                              width: `${Math.max(
+                                8,
+                                (item.count / maxOrderStatusCount) * 100,
+                              )}%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  {orders.length === 0 ? (
+                    <p className="rounded-lg bg-white/8 p-3 text-sm text-slate-300">
+                      No order data yet.
+                    </p>
+                  ) : null}
+                </div>
               </div>
             </div>
           </div>
@@ -1268,15 +1304,46 @@ function OverviewView({
         <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-5">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Inventory scene
+              Intelligence feed
             </p>
-            <h2 className="font-heading text-2xl font-semibold">Catalog balance</h2>
+            <h2 className="font-heading text-2xl font-semibold">Live signals</h2>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <MetricCard icon={Package} label="Products" value={String(stats.totalProducts)} tone="slate" />
-            <MetricCard icon={CheckCircle2} label="Active" value={String(stats.activeProducts)} tone="green" />
-            <MetricCard icon={AlertTriangle} label="Low Stock" value={String(stats.lowStockProducts)} tone="amber" />
-            <MetricCard icon={Mail} label="Subscribers" value={String(stats.subscribers)} tone="blue" />
+          <div className="space-y-3">
+            {[
+              {
+                label: "Pending fulfillment",
+                value: stats.pendingOrders,
+                tone: "bg-amber-50 text-amber-700",
+              },
+              {
+                label: "Open carts",
+                value: stats.openCarts,
+                tone: "bg-blue-50 text-blue-700",
+              },
+              {
+                label: "Registered users",
+                value: stats.usersCount,
+                tone: "bg-emerald-50 text-emerald-700",
+              },
+              {
+                label: "Low stock alerts",
+                value: stats.lowStockProducts,
+                tone: "bg-rose-50 text-rose-700",
+              },
+            ].map((signal) => (
+              <div
+                key={signal.label}
+                className="flex items-center justify-between rounded-lg border border-slate-200 p-3"
+              >
+                <div className="flex items-center gap-3">
+                  <span className={`grid h-9 w-9 place-items-center rounded-lg text-sm font-semibold ${signal.tone}`}>
+                    {signal.value}
+                  </span>
+                  <p className="text-sm font-semibold">{signal.label}</p>
+                </div>
+                <span className="h-2 w-2 rounded-full bg-emerald-400" />
+              </div>
+            ))}
           </div>
         </article>
       </section>
@@ -1298,28 +1365,38 @@ function OverviewView({
               View products
             </button>
           </div>
-          <div className="space-y-4">
-            {topProducts.map((product) => {
-              const maxStock = Math.max(...topProducts.map((item) => item.stock), 1);
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_220px]">
+            <div className="space-y-4">
+              {topProducts.map((product) => {
+                const maxStock = Math.max(...topProducts.map((item) => item.stock), 1);
 
-              return (
-                <div key={product.id}>
-                  <div className="mb-2 flex items-center justify-between gap-3 text-sm">
-                    <span className="truncate font-semibold">{product.name}</span>
-                    <span className="text-slate-500">{product.stock} units</span>
+                return (
+                  <div key={product.id}>
+                    <div className="mb-2 flex items-center justify-between gap-3 text-sm">
+                      <span className="truncate font-semibold">{product.name}</span>
+                      <span className="text-slate-500">{product.stock} units</span>
+                    </div>
+                    <div className="h-3 overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className="h-full rounded-full bg-slate-950"
+                        style={{
+                          width: `${Math.max(6, (product.stock / maxStock) * 100)}%`,
+                        }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-3 overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className="h-full rounded-full bg-slate-950"
-                      style={{
-                        width: `${Math.max(6, (product.stock / maxStock) * 100)}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-            {topProducts.length === 0 ? <EmptyState title="No products found" /> : null}
+                );
+              })}
+              {topProducts.length === 0 ? <EmptyState title="No products found" /> : null}
+            </div>
+            <div className="grid content-center gap-3 rounded-lg bg-slate-50 p-4">
+              <div className="mx-auto grid h-28 w-28 place-items-center rounded-full border-[10px] border-slate-200 border-t-slate-950">
+                <span className="text-2xl font-semibold">{inventoryHealth}%</span>
+              </div>
+              <p className="text-center text-sm font-semibold text-slate-600">
+                Active catalog health
+              </p>
+            </div>
           </div>
         </article>
 
@@ -2518,39 +2595,6 @@ function UsersView({
         <EmptyState title="No users found" />
       )}
     </section>
-  );
-}
-
-function MetricCard({
-  icon: Icon,
-  label,
-  tone,
-  value,
-}: {
-  icon: LucideIcon;
-  label: string;
-  tone: "amber" | "blue" | "green" | "slate";
-  value: string;
-}) {
-  const toneClass = {
-    amber: "bg-amber-50 text-amber-700 ring-amber-100",
-    blue: "bg-blue-50 text-blue-700 ring-blue-100",
-    green: "bg-emerald-50 text-emerald-700 ring-emerald-100",
-    slate: "bg-slate-100 text-slate-700 ring-slate-200",
-  }[tone];
-
-  return (
-    <article className="rounded-lg border border-slate-200 bg-white p-4">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-          {label}
-        </p>
-        <div className={`grid h-9 w-9 place-items-center rounded-lg ring-1 ${toneClass}`}>
-          <Icon className="h-4 w-4" aria-hidden="true" />
-        </div>
-      </div>
-      <p className="text-2xl font-semibold tracking-normal">{value}</p>
-    </article>
   );
 }
 
