@@ -123,13 +123,22 @@ export const products = pgTable(
   "products",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    modelNo: text("model_no").notNull(),
     name: text("name").notNull(),
     slug: text("slug").notNull(),
     description: text("description").notNull(),
     detailedDescription: text("detailed_description"),
     productDetailHtml: text("product_detail_html"),
+    seoUrl: text("seo_url"),
+    seoTitle: text("seo_title"),
+    seoDescription: text("seo_description"),
+    seoKeywords: text("seo_keywords").array().notNull().default(sql`ARRAY[]::text[]`),
+    googleShoppingDescription: text("google_shopping_description"),
     image: text("image").notNull(),
     imagePublicId: text("image_public_id"),
+    purchasePrice: numeric("purchase_price", { precision: 10, scale: 2 })
+      .notNull()
+      .default("0"),
     price: numeric("price", { precision: 10, scale: 2 }).notNull(),
     stock: integer("stock").notNull().default(0),
     brand: text("brand").notNull().default("Scentora"),
@@ -145,6 +154,7 @@ export const products = pgTable(
     ...timestamps,
   },
   (table) => [
+    uniqueIndex("products_model_no_unique").on(table.modelNo),
     uniqueIndex("products_slug_unique").on(table.slug),
     index("products_category_id_idx").on(table.categoryId),
     index("products_is_active_idx").on(table.isActive),

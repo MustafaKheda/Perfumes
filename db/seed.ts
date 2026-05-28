@@ -98,6 +98,7 @@ const collectionSeeds = [
 
 const productSeeds = [
   {
+    modelNo: "SCT-001",
     slug: "noir-mystique",
     image: "/images/Perfume/1.webp",
     name: "Noir Mystique",
@@ -112,6 +113,7 @@ const productSeeds = [
     isFeatured: true,
   },
   {
+    modelNo: "SCT-002",
     slug: "velvet-bloom",
     image: "/images/Perfume/2.webp",
     name: "Velvet Bloom",
@@ -126,6 +128,7 @@ const productSeeds = [
     isFeatured: true,
   },
   {
+    modelNo: "SCT-003",
     slug: "amber-dusk",
     image: "/images/Perfume/9.webp",
     name: "Amber Dusk",
@@ -140,6 +143,7 @@ const productSeeds = [
     isFeatured: true,
   },
   {
+    modelNo: "SCT-004",
     slug: "cedar-amber",
     image: "/images/Perfume/31.webp",
     name: "Cedar Amber",
@@ -154,6 +158,7 @@ const productSeeds = [
     isFeatured: false,
   },
   {
+    modelNo: "SCT-005",
     slug: "saffron-mist",
     image: "/images/Perfume/35.webp",
     name: "Saffron Mist",
@@ -168,6 +173,7 @@ const productSeeds = [
     isFeatured: false,
   },
   {
+    modelNo: "SCT-006",
     slug: "oud-ember",
     image: "/images/Perfume/18.webp",
     name: "Oud Ember",
@@ -182,6 +188,7 @@ const productSeeds = [
     isFeatured: false,
   },
   {
+    modelNo: "SCT-007",
     slug: "rose-velour",
     image: "/images/Perfume/30.webp",
     name: "Rose Velour",
@@ -196,6 +203,7 @@ const productSeeds = [
     isFeatured: true,
   },
   {
+    modelNo: "SCT-008",
     slug: "floral-noir",
     image: "/images/Perfume/7.webp",
     name: "Floral Noir",
@@ -210,6 +218,7 @@ const productSeeds = [
     isFeatured: false,
   },
   {
+    modelNo: "SCT-009",
     slug: "golden-noir",
     image: "/images/Perfume/37.webp",
     name: "Golden Noir",
@@ -224,6 +233,7 @@ const productSeeds = [
     isFeatured: true,
   },
   {
+    modelNo: "SCT-010",
     slug: "musk-bloom",
     image: "/images/Perfume/32.webp",
     name: "Musk Bloom",
@@ -238,6 +248,7 @@ const productSeeds = [
     isFeatured: false,
   },
   {
+    modelNo: "SCT-011",
     slug: "midnight-amber",
     image: "/images/Perfume/20.webp",
     name: "Midnight Amber",
@@ -253,6 +264,7 @@ const productSeeds = [
   },
 ] satisfies Array<{
   slug: string;
+  modelNo: string;
   image: string;
   name: string;
   description: string;
@@ -321,8 +333,18 @@ async function main() {
         .insert(products)
         .values({
           name: product.name,
+          modelNo: product.modelNo,
           slug: product.slug,
           description: product.description,
+          seoUrl: `/products/${product.slug}`,
+          seoTitle: buildSeoTitle(product.name),
+          seoDescription: buildSeoDescription(product.name, product.description, product.notes),
+          seoKeywords: buildSeoKeywords(product),
+          googleShoppingDescription: buildGoogleShoppingDescription(
+            product.name,
+            product.description,
+            product.notes,
+          ),
           image: product.image,
           price: product.price,
           tag: product.tag,
@@ -337,7 +359,21 @@ async function main() {
           target: products.slug,
           set: {
             name: product.name,
+            modelNo: product.modelNo,
             description: product.description,
+            seoUrl: `/products/${product.slug}`,
+            seoTitle: buildSeoTitle(product.name),
+            seoDescription: buildSeoDescription(
+              product.name,
+              product.description,
+              product.notes,
+            ),
+            seoKeywords: buildSeoKeywords(product),
+            googleShoppingDescription: buildGoogleShoppingDescription(
+              product.name,
+              product.description,
+              product.notes,
+            ),
             image: product.image,
             price: product.price,
             tag: product.tag,
@@ -404,6 +440,34 @@ function hashPassword(password: string) {
   const key = scryptSync(password, salt, 64).toString("base64url");
 
   return `scrypt:${salt}:${key}`;
+}
+
+function buildSeoTitle(name: string) {
+  return `${name} Perfume | Scentora`;
+}
+
+function buildSeoDescription(name: string, description: string, notes: string[]) {
+  return `${description} Notes include ${notes.join(", ")}. Shop ${name} perfume online from Scentora with premium fragrance presentation.`;
+}
+
+function buildSeoKeywords(product: (typeof productSeeds)[number]) {
+  return [
+    product.name,
+    product.modelNo,
+    "Scentora",
+    "perfume",
+    "fragrance",
+    `${product.categorySlug} perfume`,
+    ...product.notes,
+  ];
+}
+
+function buildGoogleShoppingDescription(
+  name: string,
+  description: string,
+  notes: string[],
+) {
+  return `${name} by Scentora. ${description} Fragrance notes: ${notes.join(", ")}. Premium perfume for daily wear, gifting, and special occasions.`;
 }
 
 function loadEnv() {

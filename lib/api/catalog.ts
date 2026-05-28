@@ -103,7 +103,11 @@ export async function getProducts(query: ProductQuery) {
 export async function findProductByIdOrSlug(idOrSlug: string) {
   const productIdentifier = isUuid(idOrSlug)
     ? or(eq(products.id, idOrSlug), eq(products.slug, idOrSlug))
-    : eq(products.slug, idOrSlug);
+    : or(
+        eq(products.slug, idOrSlug),
+        eq(products.seoUrl, idOrSlug),
+        eq(products.seoUrl, `/products/${idOrSlug}`),
+      );
   const [row] = await db
     .select({
       product: products,
@@ -233,7 +237,10 @@ async function buildProductWhere(query: ProductQuery) {
       filters.push(
         or(
           ilike(products.name, `%${search}%`),
+          ilike(products.modelNo, `%${search}%`),
           ilike(products.description, `%${search}%`),
+          ilike(products.seoTitle, `%${search}%`),
+          ilike(products.seoDescription, `%${search}%`),
           sql`${products.notes} @> ARRAY[${search}]::text[]`,
         )!,
       );
@@ -303,12 +310,18 @@ function groupCollectionsByProduct(
 function serializeProduct(product: ProductWithRelations) {
   return {
     id: product.id,
+    modelNo: product.modelNo,
     slug: product.slug,
     image: product.image,
     name: product.name,
     description: product.description,
     detailedDescription: product.detailedDescription,
     productDetailHtml: product.productDetailHtml,
+    seoUrl: product.seoUrl,
+    seoTitle: product.seoTitle,
+    seoDescription: product.seoDescription,
+    seoKeywords: product.seoKeywords,
+    googleShoppingDescription: product.googleShoppingDescription,
     notes: product.notes,
     scentOptions: product.scentOptions,
     price: Number(product.price),

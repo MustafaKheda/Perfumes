@@ -120,6 +120,7 @@ async function getAdminBestSellerData() {
     db.query.products.findMany({
       columns: {
         id: true,
+        modelNo: true,
         name: true,
         slug: true,
         image: true,

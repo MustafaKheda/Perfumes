@@ -60,12 +60,19 @@ type Collection = {
 
 type Product = {
   id: string;
+  modelNo: string;
   name: string;
   slug: string;
   image: string;
   description: string;
   detailedDescription: string | null;
   productDetailHtml: string | null;
+  seoUrl: string | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  seoKeywords: string[];
+  googleShoppingDescription: string | null;
+  purchasePrice: number;
   price: number;
   stock: number;
   tag: string | null;
@@ -161,6 +168,7 @@ type SiteSettings = {
 
 type BestSellerAdminProduct = {
   id: string;
+  modelNo: string;
   name: string;
   slug: string;
   image: string;
@@ -200,13 +208,20 @@ type AdminCustomer = {
 };
 
 type ProductForm = {
+  modelNo: string;
   name: string;
   slug: string;
   description: string;
   detailedDescription: string;
   productDetailHtml: string;
+  seoUrl: string;
+  seoTitle: string;
+  seoDescription: string;
+  seoKeywords: string;
+  googleShoppingDescription: string;
   image: string;
   imagePublicId: string;
+  purchasePrice: string;
   price: string;
   stock: string;
   tag: string;
@@ -261,13 +276,20 @@ const paymentStatuses = ["PENDING", "SUCCESS", "FAILED", "REFUNDED"] as const;
 const productTags = ["", "HOT", "NEW", "POPULAR", "LUXURY"] as const;
 
 const emptyProductForm: ProductForm = {
+  modelNo: "",
   name: "",
   slug: "",
   description: "",
   detailedDescription: "",
   productDetailHtml: "",
+  seoUrl: "",
+  seoTitle: "",
+  seoDescription: "",
+  seoKeywords: "",
+  googleShoppingDescription: "",
   image: "",
   imagePublicId: "",
+  purchasePrice: "",
   price: "",
   stock: "",
   tag: "",
@@ -384,7 +406,7 @@ export default function AdminDashboard({ admin }: { admin: AdminUser }) {
     }
 
     return products.filter((product) =>
-      [product.name, product.slug, product.category.name, product.tag ?? ""]
+      [product.name, product.modelNo, product.slug, product.category.name, product.tag ?? ""]
         .join(" ")
         .toLowerCase()
         .includes(query),
@@ -618,7 +640,12 @@ export default function AdminDashboard({ admin }: { admin: AdminUser }) {
             .split(",")
             .map((item) => item.trim())
             .filter(Boolean),
+          seoKeywords: productForm.seoKeywords
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean),
           price: Number(productForm.price),
+          purchasePrice: Number(productForm.purchasePrice || 0),
           stock: Number(productForm.stock),
           tag: productForm.tag || null,
         }),
@@ -1575,6 +1602,14 @@ function CreateProductView({
               required
             />
             <InputField
+              label="Model no"
+              value={form.modelNo}
+              onChange={(value) =>
+                onChange((prev) => ({ ...prev, modelNo: value.toUpperCase() }))
+              }
+              placeholder="Auto-generated when blank"
+            />
+            <InputField
               label="Slug"
               value={form.slug}
               onChange={(value) => onChange((prev) => ({ ...prev, slug: value }))}
@@ -1597,6 +1632,47 @@ function CreateProductView({
               }
               className="md:col-span-2"
               placeholder="Write 5-6 lines for the product detail page."
+            />
+            <InputField
+              label="SEO URL"
+              value={form.seoUrl}
+              onChange={(value) => onChange((prev) => ({ ...prev, seoUrl: value }))}
+              className="md:col-span-2"
+              placeholder="/products/noir-mystique"
+            />
+            <InputField
+              label="Page title"
+              value={form.seoTitle}
+              onChange={(value) => onChange((prev) => ({ ...prev, seoTitle: value }))}
+              className="md:col-span-2"
+              placeholder="Noir Mystique Perfume | Scentora"
+            />
+            <TextAreaField
+              label="Meta description"
+              value={form.seoDescription}
+              onChange={(value) =>
+                onChange((prev) => ({ ...prev, seoDescription: value }))
+              }
+              className="md:col-span-2"
+              placeholder="Search result description for this product."
+            />
+            <InputField
+              label="Meta keywords"
+              value={form.seoKeywords}
+              onChange={(value) =>
+                onChange((prev) => ({ ...prev, seoKeywords: value }))
+              }
+              className="md:col-span-2"
+              placeholder="Noir Mystique, oud perfume, amber fragrance"
+            />
+            <TextAreaField
+              label="Google Shopping description"
+              value={form.googleShoppingDescription}
+              onChange={(value) =>
+                onChange((prev) => ({ ...prev, googleShoppingDescription: value }))
+              }
+              className="md:col-span-2"
+              placeholder="Product-feed friendly description for Google Shopping."
             />
             <TextAreaField
               label="Professional detail HTML"
@@ -1636,7 +1712,18 @@ function CreateProductView({
               placeholder="Amber, Vanilla, Sandalwood"
             />
             <InputField
-              label="Price"
+              label="Purchase price"
+              type="number"
+              value={form.purchasePrice}
+              min="0"
+              step="0.01"
+              onChange={(value) =>
+                onChange((prev) => ({ ...prev, purchasePrice: value }))
+              }
+              placeholder="Only visible in admin"
+            />
+            <InputField
+              label="Selling price"
               type="number"
               value={form.price}
               min="0"
@@ -1825,12 +1912,14 @@ function ProductsView({
 
       {products.length > 0 ? (
         <div className="max-h-[calc(100vh-220px)] overflow-auto">
-          <table className="w-full min-w-[880px] text-left text-sm">
+          <table className="w-full min-w-[1080px] text-left text-sm">
             <thead className="sticky top-0 z-10 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-5 py-3 font-semibold">Product</th>
+                <th className="px-5 py-3 font-semibold">Model no</th>
                 <th className="px-5 py-3 font-semibold">Category</th>
-                <th className="px-5 py-3 font-semibold">Price</th>
+                <th className="px-5 py-3 font-semibold">Purchase</th>
+                <th className="px-5 py-3 font-semibold">Selling</th>
                 <th className="px-5 py-3 font-semibold">Stock</th>
                 <th className="px-5 py-3 font-semibold">Tags</th>
                 <th className="px-5 py-3 font-semibold">Status</th>
@@ -1854,8 +1943,14 @@ function ProductsView({
                       </div>
                     </div>
                   </td>
+                  <td className="px-5 py-3 font-mono text-xs font-semibold text-slate-700">
+                    {product.modelNo}
+                  </td>
                   <td className="px-5 py-3">{product.category.name}</td>
-                  <td className="px-5 py-3 font-medium">{formatInr(product.price)}</td>
+                  <td className="px-5 py-3 font-medium text-slate-500">
+                    {formatInr(product.purchasePrice)}
+                  </td>
+                  <td className="px-5 py-3 font-semibold">{formatInr(product.price)}</td>
                   <td className="px-5 py-3">
                     <StatusPill
                       label={String(product.stock)}
@@ -2327,7 +2422,7 @@ function BestSellerView({
                       <div className="min-w-0">
                         <p className="truncate font-semibold">{product.name}</p>
                         <p className="truncate text-xs text-slate-500">
-                          {product.slug}
+                          {product.modelNo} / {product.slug}
                         </p>
                       </div>
                     </div>
