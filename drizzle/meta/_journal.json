@@ -78,6 +78,13 @@
       "when": 1779989960127,
       "tag": "0010_steady_the_hand",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1779994100000,
+      "tag": "0011_add_missing_purchase_price",
+      "breakpoints": true
     }
   ]
 }
