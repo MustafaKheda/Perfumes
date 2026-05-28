@@ -143,6 +143,34 @@ export async function findProductByIdOrSlug(idOrSlug: string) {
   });
 }
 
+export async function getProductVariants(parentProductId: string) {
+  const rows = await db
+    .select({
+      id: products.id,
+      parentProductId: products.parentProductId,
+      name: products.name,
+      modelNo: products.modelNo,
+      image: products.image,
+      price: products.price,
+      stock: products.stock,
+      isActive: products.isActive,
+    })
+    .from(products)
+    .where(and(eq(products.parentProductId, parentProductId), eq(products.isActive, true)))
+    .orderBy(asc(products.name));
+
+  return rows.map((row) => ({
+    id: row.id,
+    parentProductId: row.parentProductId,
+    name: row.name,
+    modelNo: row.modelNo,
+    image: row.image,
+    price: Number(row.price),
+    stock: row.stock,
+    isActive: row.isActive,
+  }));
+}
+
 export async function getCategories() {
   const items = await db.select().from(categories).orderBy(asc(categories.name));
 
@@ -185,7 +213,7 @@ export async function findCollectionBySlug(slug: string) {
 }
 
 async function buildProductWhere(query: ProductQuery) {
-  const filters: SQL[] = [eq(products.isActive, true)];
+  const filters: SQL[] = [eq(products.isActive, true), sql`${products.parentProductId} is null`];
 
   if (query.category && query.category !== "all") {
     const category = await db.query.categories.findFirst({
@@ -328,7 +356,7 @@ function serializeProduct(product: ProductWithRelations) {
     tag: product.tag,
     category: product.category.slug,
     categoryDetails: serializeCategory(product.category),
-    collections: product.collections.map((item) => item.slug),
+    collections: product.collections.map((item: { slug: string }) => item.slug),
     collectionDetails: product.collections.map(serializeCollection),
     stock: product.stock,
     isBestSeller: product.isBestSeller,

@@ -72,6 +72,7 @@ type Product = {
   seoDescription: string | null;
   seoKeywords: string[];
   googleShoppingDescription: string | null;
+  parentProductId: string | null;
   purchasePrice: number;
   price: number;
   stock: number;
@@ -207,6 +208,25 @@ type AdminCustomer = {
   lastSeenAt: string | null;
 };
 
+type CouponAssignment = {
+  userCouponId: string;
+  user: { id: string; email: string; name: string | null };
+  coupon: {
+    id: string;
+    code: string;
+    description: string | null;
+    discountType: string;
+    discountValue: number;
+    minOrderAmount: number;
+    maxDiscountAmount: number | null;
+    startsAt: string | null;
+    expiresAt: string | null;
+  };
+  assignmentActive: boolean;
+  usedAt: string | null;
+  createdAt: string;
+};
+
 type ProductForm = {
   modelNo: string;
   name: string;
@@ -229,6 +249,7 @@ type ProductForm = {
   scentOptions: string;
   categoryId: string;
   collectionIds: string[];
+  parentProductId: string;
   isBestSeller: boolean;
   isFeatured: boolean;
   isActive: boolean;
@@ -244,12 +265,14 @@ type NavId =
   | "messages"
   | "newsletter"
   | "users"
+  | "coupons"
   | "settings"
   | "best-sellers";
 
 const navItems: Array<{ id: NavId; label: string; icon: LucideIcon }> = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "users", label: "Users", icon: Users },
+  { id: "coupons", label: "Coupons", icon: DollarSign },
   { id: "create", label: "Create Product", icon: PlusCircle },
   { id: "products", label: "Products", icon: Package },
   { id: "collections", label: "Collections", icon: ListOrdered },
@@ -297,6 +320,7 @@ const emptyProductForm: ProductForm = {
   scentOptions: "Amber, Vanilla, Sandalwood",
   categoryId: "",
   collectionIds: [],
+  parentProductId: "",
   isBestSeller: false,
   isFeatured: false,
   isActive: true,
@@ -336,6 +360,7 @@ export default function AdminDashboard({ admin }: { admin: AdminUser }) {
   const [bestSellerSettings, setBestSellerSettings] =
     useState<BestSellerSettings>(defaultBestSellerSettings);
   const [usersList, setUsersList] = useState<AdminCustomer[]>([]);
+  const [coupons, setCoupons] = useState<CouponAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [savingProduct, setSavingProduct] = useState(false);
@@ -346,6 +371,7 @@ export default function AdminDashboard({ admin }: { admin: AdminUser }) {
   const [savingBestSellers, setSavingBestSellers] = useState(false);
   const [evaluatingBestSellers, setEvaluatingBestSellers] = useState(false);
   const [productSearch, setProductSearch] = useState("");
+  const [importingProducts, setImportingProducts] = useState(false);
 
   const [productForm, setProductForm] = useState<ProductForm>(emptyProductForm);
 
@@ -555,6 +581,19 @@ export default function AdminDashboard({ admin }: { admin: AdminUser }) {
     }
   }, [readAdminJson]);
 
+  const loadCoupons = useCallback(async () => {
+    try {
+      const response = await fetch("/api/admin/coupons");
+      const json = await readAdminJson<{ data: CouponAssignment[] }>(
+        response,
+        "Failed to load coupons",
+      );
+      setCoupons(json.data);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "Failed to load coupons");
+    }
+  }, [readAdminJson]);
+
   const loadSiteSettings = useCallback(async () => {
     try {
       const response = await fetch("/api/admin/site-settings");
@@ -614,6 +653,10 @@ export default function AdminDashboard({ admin }: { admin: AdminUser }) {
   }, [loadUsers]);
 
   useEffect(() => {
+    void Promise.resolve().then(loadCoupons);
+  }, [loadCoupons]);
+
+  useEffect(() => {
     void Promise.resolve().then(loadSiteSettings);
   }, [loadSiteSettings]);
 
@@ -632,6 +675,7 @@ export default function AdminDashboard({ admin }: { admin: AdminUser }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...productForm,
+          parentProductId: productForm.parentProductId || null,
           scentOptions: productForm.scentOptions
             .split(",")
             .map((item) => item.trim())
@@ -891,6 +935,7 @@ export default function AdminDashboard({ admin }: { admin: AdminUser }) {
         <CreateProductView
           categories={categories}
           collections={collections}
+          products={products}
           form={productForm}
           savingProduct={savingProduct}
           uploadingImage={uploadingImage}
@@ -907,6 +952,35 @@ export default function AdminDashboard({ admin }: { admin: AdminUser }) {
           products={visibleProducts}
           query={productSearch}
           onQueryChange={setProductSearch}
+          importingProducts={importingProducts}
+          onReload={loadInitialData}
+          onError={setError}
+          onImportProducts={async (file) => {
+            setImportingProducts(true);
+            setError(null);
+            try {
+              const formData = new FormData();
+              formData.append("file", file);
+              const response = await fetch("/api/admin/products/import", {
+                method: "POST",
+                body: formData,
+              });
+              const body = (await response.json().catch(() => null)) as
+                | { error?: string; data?: { importedCount?: number; errors?: string[] } }
+                | null;
+              if (!response.ok || body?.error) {
+                throw new Error(body?.error ?? "Failed to import products");
+              }
+              await loadInitialData();
+              if (body?.data?.errors && body.data.errors.length > 0) {
+                setError(`Imported ${body.data.importedCount ?? 0}. Some rows failed: ${body.data.errors.slice(0, 5).join(" | ")}`);
+              }
+            } catch (importError) {
+              setError(importError instanceof Error ? importError.message : "Failed to import products");
+            } finally {
+              setImportingProducts(false);
+            }
+          }}
         />
       );
     }
@@ -960,6 +1034,17 @@ export default function AdminDashboard({ admin }: { admin: AdminUser }) {
 
     if (activeView === "users") {
       return <UsersView users={usersList} onViewOrders={viewUserOrders} />;
+    }
+
+    if (activeView === "coupons") {
+      return (
+        <CouponsView
+          users={usersList}
+          coupons={coupons}
+          onReload={loadCoupons}
+          onError={setError}
+        />
+      );
     }
 
     if (activeView === "settings") {
@@ -1564,6 +1649,7 @@ function OverviewView({
 function CreateProductView({
   categories,
   collections,
+  products,
   form,
   savingProduct,
   uploadingImage,
@@ -1573,6 +1659,7 @@ function CreateProductView({
 }: {
   categories: Category[];
   collections: Collection[];
+  products: Product[];
   form: ProductForm;
   savingProduct: boolean;
   uploadingImage: boolean;
@@ -1580,6 +1667,8 @@ function CreateProductView({
   onCreateProduct: (event: FormEvent<HTMLFormElement>) => void;
   onUploadProductImage: (file: File) => void;
 }) {
+  const parentProducts = products.filter((product) => !product.parentProductId);
+
   return (
     <section className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
       <article className="rounded-lg border border-slate-200 bg-white p-5">
@@ -1755,6 +1844,20 @@ function CreateProductView({
               ))}
             </SelectField>
             <SelectField
+              label="Parent product (for smell variant)"
+              value={form.parentProductId}
+              onChange={(value) =>
+                onChange((prev) => ({ ...prev, parentProductId: value }))
+              }
+            >
+              <option value="">None (create parent product)</option>
+              {parentProducts.map((product) => (
+                <option key={product.id} value={product.id}>
+                  {product.name} ({product.modelNo})
+                </option>
+              ))}
+            </SelectField>
+            <SelectField
               label="Tag"
               value={form.tag}
               onChange={(value) => onChange((prev) => ({ ...prev, tag: value }))}
@@ -1889,11 +1992,67 @@ function ProductsView({
   products,
   query,
   onQueryChange,
+  importingProducts,
+  onImportProducts,
+  onReload,
+  onError,
 }: {
   products: Product[];
   query: string;
   onQueryChange: (value: string) => void;
+  importingProducts: boolean;
+  onImportProducts: (file: File) => void;
+  onReload: () => Promise<void>;
+  onError: Dispatch<SetStateAction<string | null>>;
 }) {
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  async function onEdit(product: Product) {
+    const name = window.prompt("Product name", product.name);
+    if (name === null) return;
+    const modelNo = window.prompt("Model no", product.modelNo);
+    if (modelNo === null) return;
+    const image = window.prompt("Image URL", product.image);
+    if (image === null) return;
+    const priceText = window.prompt("Selling price", String(product.price));
+    if (priceText === null) return;
+    const stockText = window.prompt("Stock", String(product.stock));
+    if (stockText === null) return;
+
+    setUpdatingId(product.id);
+    onError(null);
+    try {
+      const response = await fetch(`/api/admin/products/${product.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, modelNo, image, price: Number(priceText), stock: Number(stockText) }),
+      });
+      const body = (await response.json().catch(() => null)) as { error?: string } | null;
+      if (!response.ok || body?.error) throw new Error(body?.error ?? "Failed to update product");
+      await onReload();
+    } catch (error) {
+      onError(error instanceof Error ? error.message : "Failed to update product");
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
+  async function onSoftDelete(product: Product) {
+    if (!window.confirm(`Soft delete ${product.name}?`)) return;
+    setUpdatingId(product.id);
+    onError(null);
+    try {
+      const response = await fetch(`/api/admin/products/${product.id}`, { method: "DELETE" });
+      const body = (await response.json().catch(() => null)) as { error?: string } | null;
+      if (!response.ok || body?.error) throw new Error(body?.error ?? "Failed to delete product");
+      await onReload();
+    } catch (error) {
+      onError(error instanceof Error ? error.message : "Failed to delete product");
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
   return (
     <section className="rounded-lg border border-slate-200 bg-white">
       <div className="flex flex-col gap-4 border-b border-slate-200 p-5 lg:flex-row lg:items-center lg:justify-between">
@@ -1908,6 +2067,25 @@ function ProductsView({
           onChange={onQueryChange}
           placeholder="Search products"
         />
+        <label
+          className={`inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 ${importingProducts ? "pointer-events-none opacity-60" : ""}`}
+        >
+          <Upload className="h-4 w-4" aria-hidden="true" />
+          {importingProducts ? "Importing..." : "Import CSV / Excel"}
+          <input
+            type="file"
+            accept=".csv,.xlsx,.xls"
+            className="sr-only"
+            disabled={importingProducts}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) {
+                onImportProducts(file);
+              }
+              event.currentTarget.value = "";
+            }}
+          />
+        </label>
       </div>
 
       {products.length > 0 ? (
@@ -1924,6 +2102,7 @@ function ProductsView({
                 <th className="px-5 py-3 font-semibold">Tags</th>
                 <th className="px-5 py-3 font-semibold">Status</th>
                 <th className="px-5 py-3 font-semibold">Created</th>
+                <th className="px-5 py-3 font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -1981,6 +2160,30 @@ function ProductsView({
                   </td>
                   <td className="px-5 py-3 text-slate-600">
                     {formatDate(product.createdAt)}
+                  </td>
+                  <td className="px-5 py-3">
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold"
+                        disabled={updatingId === product.id}
+                        onClick={() => {
+                          void onEdit(product);
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700"
+                        disabled={updatingId === product.id}
+                        onClick={() => {
+                          void onSoftDelete(product);
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -2712,6 +2915,171 @@ function HeroMetric({
       </div>
       <p className="text-2xl font-semibold">{value}</p>
     </div>
+  );
+}
+
+function CouponsView({
+  users,
+  coupons,
+  onReload,
+  onError,
+}: {
+  users: AdminCustomer[];
+  coupons: CouponAssignment[];
+  onReload: () => Promise<void>;
+  onError: Dispatch<SetStateAction<string | null>>;
+}) {
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    userId: "",
+    code: "",
+    discountType: "PERCENT",
+    discountValue: "",
+    minOrderAmount: "",
+    maxDiscountAmount: "",
+    description: "",
+  });
+
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSaving(true);
+    onError(null);
+    try {
+      const response = await fetch("/api/admin/coupons", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          discountValue: Number(form.discountValue),
+          minOrderAmount: Number(form.minOrderAmount || 0),
+          maxDiscountAmount:
+            form.discountType === "PERCENT" && form.maxDiscountAmount
+              ? Number(form.maxDiscountAmount)
+              : null,
+        }),
+      });
+      const body = (await response.json().catch(() => null)) as { error?: string } | null;
+      if (!response.ok || body?.error) {
+        throw new Error(body?.error ?? "Failed to assign coupon");
+      }
+      await onReload();
+      setForm((prev) => ({ ...prev, code: "", discountValue: "", description: "" }));
+    } catch (error) {
+      onError(error instanceof Error ? error.message : "Failed to assign coupon");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <section className="space-y-5">
+      <form onSubmit={onSubmit} className="rounded-lg border border-slate-200 bg-white p-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Coupons</p>
+        <h2 className="font-heading text-3xl font-semibold">Assign coupon to user</h2>
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <SelectField
+            label="User"
+            value={form.userId}
+            onChange={(value) => setForm((prev) => ({ ...prev, userId: value }))}
+            required
+          >
+            <option value="">Select user</option>
+            {users.map((user) => (
+              <option key={user.id} value={user.id}>
+                {user.email}
+              </option>
+            ))}
+          </SelectField>
+          <InputField
+            label="Coupon code"
+            value={form.code}
+            onChange={(value) => setForm((prev) => ({ ...prev, code: value.toUpperCase() }))}
+            required
+          />
+          <SelectField
+            label="Discount type"
+            value={form.discountType}
+            onChange={(value) => setForm((prev) => ({ ...prev, discountType: value }))}
+          >
+            <option value="PERCENT">Percent</option>
+            <option value="FIXED">Fixed</option>
+          </SelectField>
+          <InputField
+            label="Discount value"
+            type="number"
+            value={form.discountValue}
+            onChange={(value) => setForm((prev) => ({ ...prev, discountValue: value }))}
+            required
+          />
+          <InputField
+            label="Min order amount"
+            type="number"
+            value={form.minOrderAmount}
+            onChange={(value) => setForm((prev) => ({ ...prev, minOrderAmount: value }))}
+          />
+          {form.discountType === "PERCENT" ? (
+            <InputField
+              label="Max discount amount"
+              type="number"
+              value={form.maxDiscountAmount}
+              onChange={(value) => setForm((prev) => ({ ...prev, maxDiscountAmount: value }))}
+            />
+          ) : null}
+          <TextAreaField
+            label="Description"
+            value={form.description}
+            onChange={(value) => setForm((prev) => ({ ...prev, description: value }))}
+            className="md:col-span-2"
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={saving}
+          className="mt-5 inline-flex min-h-11 items-center justify-center rounded-lg bg-slate-950 px-5 text-sm font-semibold text-white disabled:opacity-60"
+        >
+          {saving ? "Assigning..." : "Assign coupon"}
+        </button>
+      </form>
+
+      <div className="rounded-lg border border-slate-200 bg-white">
+        <div className="border-b border-slate-200 p-5">
+          <h3 className="text-lg font-semibold">User coupon assignments</h3>
+        </div>
+        <div className="max-h-[460px] overflow-auto">
+          <table className="w-full min-w-[980px] text-left text-sm">
+            <thead className="sticky top-0 z-10 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-5 py-3 font-semibold">User</th>
+                <th className="px-5 py-3 font-semibold">Code</th>
+                <th className="px-5 py-3 font-semibold">Discount</th>
+                <th className="px-5 py-3 font-semibold">Min order</th>
+                <th className="px-5 py-3 font-semibold">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {coupons.map((item) => (
+                <tr key={item.userCouponId}>
+                  <td className="px-5 py-3">{item.user.email}</td>
+                  <td className="px-5 py-3 font-mono">{item.coupon.code}</td>
+                  <td className="px-5 py-3">
+                    {item.coupon.discountType === "PERCENT"
+                      ? `${item.coupon.discountValue}%`
+                      : formatInr(item.coupon.discountValue)}
+                  </td>
+                  <td className="px-5 py-3">{formatInr(item.coupon.minOrderAmount)}</td>
+                  <td className="px-5 py-3">
+                    <StatusPill
+                      label={item.usedAt ? "USED" : item.assignmentActive ? "ACTIVE" : "INACTIVE"}
+                      tone={item.usedAt ? "neutral" : item.assignmentActive ? "green" : "warning"}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
   );
 }
 

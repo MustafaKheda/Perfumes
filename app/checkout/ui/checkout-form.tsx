@@ -41,6 +41,7 @@ export default function CheckoutForm() {
     state: defaultState?.name ?? "",
     postalCode: "",
     country: "India",
+    couponCode: "",
   });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -99,7 +100,7 @@ export default function CheckoutForm() {
       const response = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, guestItems }),
+        body: JSON.stringify({ ...form, guestItems, couponCode: form.couponCode }),
       });
       const body = await readCheckoutResponse(response);
 
@@ -257,6 +258,11 @@ export default function CheckoutForm() {
               onChange={(value) => updateField("postalCode", value)}
               autoComplete="postal-code"
               required
+            />
+            <InputField
+              label="Coupon code (optional)"
+              value={form.couponCode}
+              onChange={(value) => updateField("couponCode", value.toUpperCase())}
             />
           </div>
 

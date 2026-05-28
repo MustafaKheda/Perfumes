@@ -34,6 +34,7 @@ type CreateProductBody = {
   isBestSeller?: unknown;
   isFeatured?: unknown;
   isActive?: unknown;
+  parentProductId?: unknown;
   categoryId?: unknown;
   collectionIds?: unknown;
 };
@@ -110,6 +111,7 @@ export async function POST(request: Request) {
   const scentOptions = toStringArray(body.scentOptions);
   const imagePublicId = toOptionalString(body.imagePublicId);
   const collectionIds = toCollectionIds(body.collectionIds);
+  const parentProductId = toOptionalString(body.parentProductId);
   const isBestSeller = toBoolean(body.isBestSeller, false);
   const isFeatured = toBoolean(body.isFeatured, false);
   const isActive = toBoolean(body.isActive, true);
@@ -131,6 +133,16 @@ export async function POST(request: Request) {
 
   if (!category) {
     return badRequest("Invalid categoryId");
+  }
+
+  if (parentProductId) {
+    const parent = await db.query.products.findFirst({
+      where: eq(products.id, parentProductId),
+      columns: { id: true },
+    });
+    if (!parent) {
+      return badRequest("Invalid parentProductId");
+    }
   }
 
   if (collectionIds.length > 0) {
@@ -171,6 +183,7 @@ export async function POST(request: Request) {
           isBestSeller,
           isFeatured,
           isActive,
+          parentProductId,
           categoryId,
         })
         .returning({ id: products.id });
@@ -247,12 +260,13 @@ function serializeProduct(product: ProductWithRelations) {
     isBestSeller: product.isBestSeller,
     isFeatured: product.isFeatured,
     isActive: product.isActive,
+    parentProductId: product.parentProductId,
     category: {
       id: product.category.id,
       name: product.category.name,
       slug: product.category.slug,
     },
-    collections: product.collections.map((item) => ({
+    collections: product.collections.map((item: { collection: { id: string; name: string; slug: string } }) => ({
       id: item.collection.id,
       name: item.collection.name,
       slug: item.collection.slug,

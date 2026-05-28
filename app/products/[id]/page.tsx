@@ -5,7 +5,7 @@ import { BadgeCheck, Clock3, Gift, PackageCheck, ShieldCheck, Sparkles, Truck } 
 import ProductDetailPurchase from "@/components/ProductDetailPurchase";
 import { Breadcrumb } from "@/components/common/Breadcrumb";
 import Newsletter from "@/components/common/Newsletter";
-import { findProductByIdOrSlug } from "@/lib/api/catalog";
+import { findProductByIdOrSlug, getProductVariants } from "@/lib/api/catalog";
 import { getWishlistProductIdSet } from "@/lib/api/wishlist";
 
 type ProductPageProps = {
@@ -100,10 +100,17 @@ export default async function ProductPage({ params }: ProductPageProps) {
     product.description;
   const productDetailHtml =
     product.productDetailHtml ?? buildDefaultProductDetailHtml(product);
+  const variants = await getProductVariants(product.id);
   const scentOptions =
-    product.scentOptions.length > 0 ? product.scentOptions : product.notes.slice(0, 6);
+    variants.length > 0
+      ? variants.map((variant: { name: string }) => variant.name)
+      : product.scentOptions.length > 0
+        ? product.scentOptions
+        : product.notes.slice(0, 6);
   const collectionLabel =
-    product.collectionDetails.map((collection) => collection.name).join(", ") ||
+    product.collectionDetails
+      .map((collection: { name: string }) => collection.name)
+      .join(", ") ||
     "Scentora";
   const heroNotes =
     product.notes.length > 0 ? product.notes.slice(0, 4) : ["Amber", "Vanilla", "Sandalwood"];
@@ -137,7 +144,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
         "@type": "PropertyValue",
         name: "Collection",
         value:
-          product.collectionDetails.map((collection) => collection.name).join(", ") ||
+          product.collectionDetails
+            .map((collection: { name: string }) => collection.name)
+            .join(", ") ||
           "Scentora",
       },
     ],
@@ -222,7 +231,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                     Signature profile
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {heroNotes.map((note) => (
+                    {heroNotes.map((note: string) => (
                       <span
                         key={note}
                         className="rounded-full border border-white/20 bg-black/24 px-3 py-1 text-xs font-semibold text-white backdrop-blur"
@@ -311,7 +320,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            {heroNotes.map((note, index) => (
+            {heroNotes.map((note: string, index: number) => (
               <ScentNoteCard
                 key={note}
                 note={note}

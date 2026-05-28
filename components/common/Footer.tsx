@@ -42,11 +42,11 @@ export default function Footer() {
     }, []);
 
     const socialLinks = [
-        { label: "Facebook", href: settings.facebookUrl, icon: Facebook },
-        { label: "X", href: settings.xUrl, icon: X },
-        { label: "YouTube", href: settings.youtubeUrl, icon: Youtube },
-        { label: "Instagram", href: settings.instagramUrl, icon: Instagram },
-    ].filter((item) => item.href);
+        { label: "Facebook", href: normalizeSocialUrl(settings.facebookUrl), icon: Facebook },
+        { label: "X", href: normalizeSocialUrl(settings.xUrl), icon: X },
+        { label: "YouTube", href: normalizeSocialUrl(settings.youtubeUrl), icon: Youtube },
+        { label: "Instagram", href: normalizeSocialUrl(settings.instagramUrl), icon: Instagram },
+    ].filter((item) => item.href.length > 0);
     const phoneHref = settings.contactPhone
         ? `tel:${settings.contactPhone.replace(/\s+/g, "")}`
         : "#";
@@ -155,4 +155,18 @@ export default function Footer() {
             </div>
         </footer>
     );
+}
+
+function normalizeSocialUrl(value: string) {
+    const trimmed = value.trim();
+
+    if (!trimmed) {
+        return "";
+    }
+
+    if (/^https?:\/\//i.test(trimmed)) {
+        return trimmed;
+    }
+
+    return `https://${trimmed}`;
 }

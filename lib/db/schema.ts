@@ -1,6 +1,7 @@
 import { relations, sql } from "drizzle-orm";
 import {
   boolean,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -148,6 +149,7 @@ export const products = pgTable(
     isBestSeller: boolean("is_best_seller").notNull().default(false),
     isFeatured: boolean("is_featured").notNull().default(false),
     isActive: boolean("is_active").notNull().default(true),
+    parentProductId: uuid("parent_product_id"),
     categoryId: uuid("category_id")
       .notNull()
       .references(() => categories.id),
@@ -158,6 +160,12 @@ export const products = pgTable(
     uniqueIndex("products_slug_unique").on(table.slug),
     index("products_category_id_idx").on(table.categoryId),
     index("products_is_active_idx").on(table.isActive),
+    index("products_parent_product_id_idx").on(table.parentProductId),
+    foreignKey({
+      columns: [table.parentProductId],
+      foreignColumns: [table.id],
+      name: "products_parent_product_id_products_id_fk",
+    }).onDelete("set null"),
     index("products_is_best_seller_idx").on(table.isBestSeller),
     index("products_is_featured_idx").on(table.isFeatured),
   ],
@@ -351,11 +359,54 @@ export const siteSettings = pgTable("site_settings", {
   ...timestamps,
 });
 
+export const coupons = pgTable(
+  "coupons",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    code: text("code").notNull(),
+    description: text("description"),
+    discountType: text("discount_type").notNull().default("PERCENT"),
+    discountValue: numeric("discount_value", { precision: 10, scale: 2 }).notNull(),
+    maxDiscountAmount: numeric("max_discount_amount", { precision: 10, scale: 2 }),
+    minOrderAmount: numeric("min_order_amount", { precision: 10, scale: 2 }).notNull().default("0"),
+    startsAt: timestamp("starts_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    maxRedemptions: integer("max_redemptions"),
+    redemptionCount: integer("redemption_count").notNull().default(0),
+    isActive: boolean("is_active").notNull().default(true),
+    ...timestamps,
+  },
+  (table) => [uniqueIndex("coupons_code_unique").on(table.code), index("coupons_is_active_idx").on(table.isActive)],
+);
+
+export const userCoupons = pgTable(
+  "user_coupons",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    couponId: uuid("coupon_id")
+      .notNull()
+      .references(() => coupons.id, { onDelete: "cascade" }),
+    isActive: boolean("is_active").notNull().default(true),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    usedOrderId: uuid("used_order_id").references(() => orders.id, { onDelete: "set null" }),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("user_coupons_user_coupon_unique").on(table.userId, table.couponId),
+    index("user_coupons_user_id_idx").on(table.userId),
+    index("user_coupons_coupon_id_idx").on(table.couponId),
+  ],
+);
+
 export const usersRelations = relations(users, ({ many }) => ({
   cartItems: many(cartItems),
   wishlistItems: many(wishlistItems),
   orders: many(orders),
   sessions: many(userSessions),
+  coupons: many(userCoupons),
 }));
 
 export const userSessionsRelations = relations(userSessions, ({ one }) => ({
@@ -428,6 +479,26 @@ export const ordersRelations = relations(orders, ({ one, many }) => ({
   items: many(orderItems),
   statusHistory: many(orderStatusHistory),
   payment: one(payments),
+  userCoupons: many(userCoupons),
+}));
+
+export const couponsRelations = relations(coupons, ({ many }) => ({
+  userCoupons: many(userCoupons),
+}));
+
+export const userCouponsRelations = relations(userCoupons, ({ one }) => ({
+  user: one(users, {
+    fields: [userCoupons.userId],
+    references: [users.id],
+  }),
+  coupon: one(coupons, {
+    fields: [userCoupons.couponId],
+    references: [coupons.id],
+  }),
+  order: one(orders, {
+    fields: [userCoupons.usedOrderId],
+    references: [orders.id],
+  }),
 }));
 
 export const orderStatusHistoryRelations = relations(orderStatusHistory, ({ one }) => ({
