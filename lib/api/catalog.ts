@@ -101,12 +101,15 @@ export async function getProducts(query: ProductQuery) {
 }
 
 export async function findProductByIdOrSlug(idOrSlug: string) {
+  const normalized = idOrSlug.trim();
+  const legacyModelNo = numericToLegacyModelNo(normalized);
   const productIdentifier = isUuid(idOrSlug)
     ? or(eq(products.id, idOrSlug), eq(products.slug, idOrSlug))
     : or(
         eq(products.slug, idOrSlug),
         eq(products.seoUrl, idOrSlug),
         eq(products.seoUrl, `/products/${idOrSlug}`),
+        ...(legacyModelNo ? [eq(products.modelNo, legacyModelNo)] : []),
       );
   const [row] = await db
     .select({
@@ -512,4 +515,17 @@ function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     value,
   );
+}
+
+function numericToLegacyModelNo(value: string) {
+  if (!/^\d+$/.test(value)) {
+    return null;
+  }
+
+  const numberValue = Number(value);
+  if (!Number.isInteger(numberValue) || numberValue < 1 || numberValue > 999) {
+    return null;
+  }
+
+  return `SCT-${String(numberValue).padStart(3, "0")}`;
 }
