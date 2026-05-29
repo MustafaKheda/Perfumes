@@ -1,10 +1,17 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Heart, Menu, ShoppingBag, UserRound, X } from "lucide-react";
+import { Heart, LogIn, LogOut, Menu, ShoppingBag, UserPlus, UserRound, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { SignedIn, SignedOut, SignInButton, SignUpButton, SignOutButton, UserButton, useUser } from "@clerk/nextjs";
+import {
+  Show,
+  SignInButton,
+  SignOutButton,
+  SignUpButton,
+  UserButton,
+  useUser,
+} from "@clerk/nextjs";
 import { getGuestCartQuantity } from "@/lib/guest-cart";
 import { getGuestWishlistQuantity } from "@/lib/guest-wishlist";
 
@@ -163,7 +170,7 @@ export default function Navbar() {
           </Link>
 
           <div className="group relative">
-            <SignedOut>
+            <Show when="signed-out">
               <SignInButton>
                 <button
                   type="button"
@@ -173,37 +180,48 @@ export default function Navbar() {
                   <UserRound className="h-4 w-4" aria-hidden="true" />
                 </button>
               </SignInButton>
-            </SignedOut>
-            <SignedIn>
+            </Show>
+            <Show when="signed-in">
               <div className="grid h-9 w-9 place-items-center rounded-full border border-black/50 hover:bg-black/5">
                 <UserButton />
               </div>
-            </SignedIn>
+            </Show>
             <div className="pointer-events-none absolute right-0 top-11 z-20 min-w-[180px] rounded-lg border border-black/10 bg-white px-3 py-2 text-sm font-medium text-[#1A1A1A] opacity-0 shadow-sm transition group-hover:opacity-100">
               <span className="block truncate">{accountLabel}</span>
             </div>
           </div>
 
-          <SignedOut>
+          <Show when="signed-out">
+            <SignInButton>
+              <button
+                type="button"
+                className="hidden min-h-9 items-center justify-center gap-2 rounded-full border border-black/50 px-4 text-sm font-semibold text-[#1A1A1A] transition hover:bg-black/5 sm:inline-flex"
+              >
+                <LogIn className="h-4 w-4" aria-hidden="true" />
+                Sign in
+              </button>
+            </SignInButton>
             <SignUpButton>
               <button
                 type="button"
-                className="hidden min-h-9 items-center justify-center rounded-full border border-black/50 px-3 text-sm font-medium hover:bg-black/5 sm:inline-flex"
+                className="hidden min-h-9 items-center justify-center gap-2 rounded-full bg-[#1A1A1A] px-4 text-sm font-semibold text-white transition hover:bg-black/85 sm:inline-flex"
               >
+                <UserPlus className="h-4 w-4" aria-hidden="true" />
                 Sign up
               </button>
             </SignUpButton>
-          </SignedOut>
-          <SignedIn>
+          </Show>
+          <Show when="signed-in">
             <SignOutButton>
               <button
                 type="button"
-                className="hidden min-h-9 items-center justify-center rounded-full border border-black/50 px-3 text-sm font-medium hover:bg-black/5 sm:inline-flex"
+                className="hidden min-h-9 items-center justify-center gap-2 rounded-full border border-black/50 px-4 text-sm font-semibold text-[#1A1A1A] transition hover:bg-black/5 sm:inline-flex"
               >
+                <LogOut className="h-4 w-4" aria-hidden="true" />
                 Sign out
               </button>
             </SignOutButton>
-          </SignedIn>
+          </Show>
         </div>
       </div>
 
@@ -237,37 +255,40 @@ export default function Navbar() {
                   {label}
                 </Link>
               ))}
-              <SignedOut>
+              <Show when="signed-out">
                 <SignInButton>
                   <button
                     type="button"
-                    className="rounded-lg px-3 py-2 text-left hover:bg-black/5"
+                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-left hover:bg-black/5"
                     onClick={() => setMenuOpen(false)}
                   >
+                    <LogIn className="h-4 w-4" aria-hidden="true" />
                     Sign in
                   </button>
                 </SignInButton>
                 <SignUpButton>
                   <button
                     type="button"
-                    className="rounded-lg px-3 py-2 text-left hover:bg-black/5"
+                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-left hover:bg-black/5"
                     onClick={() => setMenuOpen(false)}
                   >
+                    <UserPlus className="h-4 w-4" aria-hidden="true" />
                     Sign up
                   </button>
                 </SignUpButton>
-              </SignedOut>
-              <SignedIn>
+              </Show>
+              <Show when="signed-in">
                 <SignOutButton>
                   <button
                     type="button"
-                    className="rounded-lg px-3 py-2 text-left hover:bg-black/5"
+                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-left hover:bg-black/5"
                     onClick={() => setMenuOpen(false)}
                   >
+                    <LogOut className="h-4 w-4" aria-hidden="true" />
                     Sign out
                   </button>
                 </SignOutButton>
-              </SignedIn>
+              </Show>
             </nav>
           </motion.div>
         ) : null}

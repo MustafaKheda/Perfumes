@@ -1,8 +1,17 @@
+import { clerkMiddleware } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 
 const HOME_SEEN_COOKIE = "scentora_home_seen";
 
+const clerk = clerkMiddleware();
+
 export function proxy(request: NextRequest) {
+  // Let Clerk handle auth/proxy endpoints first.
+  const clerkResponse = clerk(request);
+  if (clerkResponse) {
+    return clerkResponse;
+  }
+
   const { pathname } = request.nextUrl;
   const hasSeenHome = request.cookies.has(HOME_SEEN_COOKIE);
 
@@ -42,6 +51,11 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!api|admin|_next/static|_next/image|favicon.ico|.*\\..*).*)",
+    // Clerk proxy endpoints (must be reachable).
+    "/__clerk/(.*)",
+    // API / RPC routes.
+    "/(api|trpc)(.*)",
+    // Everything else except static files and Next internals.
+    "/((?!admin|_next/static|_next/image|favicon.ico|.*\\..*).*)",
   ],
 };
