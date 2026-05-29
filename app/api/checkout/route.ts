@@ -16,6 +16,8 @@ import { City, Country, State } from "country-state-city";
 import { isValidPhoneNumber, type CountryCode } from "libphonenumber-js";
 import { isPostalCodeValid } from "@/lib/postal-code";
 import { requireCustomerUser } from "@/lib/user-auth";
+import { buildInvoiceHtml } from "@/lib/invoice";
+import { sendInvoiceEmail } from "@/lib/email";
 
 type CheckoutBody = {
   firstName?: unknown;
@@ -242,6 +244,51 @@ async function createOrder(request: Request) {
 
     return createdOrder;
   });
+
+  // Best effort: send invoice email. Do not block checkout on email failure.
+  try {
+    const html = buildInvoiceHtml({
+      orderId: order.id,
+      createdAt: new Date(),
+      customerEmail: email,
+      customerName: `${firstName} ${lastName}`,
+      customerPhone: fullPhone,
+      paymentMethod: "CASH_ON_DELIVERY",
+      subtotal,
+      shippingFee,
+      totalAmount,
+      shippingAddress: {
+        firstName,
+        lastName,
+        dialCode: dialCode || expectedDialCode,
+        phone,
+        fullPhone,
+        countryCode,
+        stateCode,
+        addressLine1,
+        addressLine2,
+        city,
+        state,
+        postalCode,
+        country,
+      },
+      items: cartRows.map((item) => ({
+        name: item.name,
+        quantity: item.quantity,
+        price: Number(item.price),
+        scentOption: item.scentOption || null,
+      })),
+    });
+
+    await sendInvoiceEmail({
+      to: email,
+      customerName: `${firstName} ${lastName}`,
+      orderId: order.id,
+      html,
+    });
+  } catch (invoiceError) {
+    console.error("Invoice email failed", invoiceError);
+  }
 
   return NextResponse.json({
     message: "Order created successfully",

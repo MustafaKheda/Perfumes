@@ -1003,6 +1003,7 @@ export default function AdminDashboard({ admin }: { admin: AdminUser }) {
           updatingOrderId={updatingOrderId}
           onFiltersChange={setOrderFilters}
           onUpdateOrder={onUpdateOrder}
+          onError={setError}
         />
       );
     }
@@ -2399,6 +2400,7 @@ function OrdersView({
   updatingOrderId,
   onFiltersChange,
   onUpdateOrder,
+  onError,
 }: {
   filters: {
     q: string;
@@ -2418,7 +2420,28 @@ function OrdersView({
     orderId: string,
     payload: { status?: string; paymentStatus?: string },
   ) => void;
+  onError: Dispatch<SetStateAction<string | null>>;
 }) {
+  const [sendingInvoiceId, setSendingInvoiceId] = useState<string | null>(null);
+
+  async function sendInvoice(orderId: string) {
+    setSendingInvoiceId(orderId);
+    onError(null);
+    try {
+      const response = await fetch(`/api/admin/orders/${orderId}/invoice`, {
+        method: "POST",
+      });
+      const body = (await response.json().catch(() => null)) as { error?: string } | null;
+      if (!response.ok || body?.error) {
+        throw new Error(body?.error ?? "Failed to send invoice");
+      }
+    } catch (error) {
+      onError(error instanceof Error ? error.message : "Failed to send invoice");
+    } finally {
+      setSendingInvoiceId(null);
+    }
+  }
+
   return (
     <section className="rounded-lg border border-slate-200 bg-white">
       <div className="border-b border-slate-200 p-5">
@@ -2481,6 +2504,7 @@ function OrdersView({
                 <th className="px-5 py-3 font-semibold">Order Status</th>
                 <th className="px-5 py-3 font-semibold">Payment Status</th>
                 <th className="px-5 py-3 font-semibold">Date</th>
+                <th className="px-5 py-3 font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -2570,6 +2594,30 @@ function OrdersView({
                   </td>
                   <td className="px-5 py-3 text-slate-600">
                     {formatDate(order.createdAt)}
+                  </td>
+                  <td className="px-5 py-3">
+                    <div className="flex gap-2">
+                      <a
+                        href={`/api/admin/orders/${order.id}/invoice`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                        title="Open invoice preview"
+                      >
+                        View
+                      </a>
+                      <button
+                        type="button"
+                        className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                        disabled={sendingInvoiceId === order.id}
+                        onClick={() => {
+                          void sendInvoice(order.id);
+                        }}
+                        title="Send invoice to customer email"
+                      >
+                        {sendingInvoiceId === order.id ? "Sending..." : "Send invoice"}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
