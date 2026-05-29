@@ -2015,6 +2015,16 @@ function ProductsView({
     stock: "",
   });
 
+  const childCountByParentId = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const product of products) {
+      if (product.parentProductId) {
+        map.set(product.parentProductId, (map.get(product.parentProductId) ?? 0) + 1);
+      }
+    }
+    return map;
+  }, [products]);
+
   async function onEdit(product: Product) {
     setEditingProduct(product);
     setEditForm({
@@ -2065,6 +2075,31 @@ function ProductsView({
       await onReload();
     } catch (error) {
       onError(error instanceof Error ? error.message : "Failed to delete product");
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
+  async function onGenerateVariants(product: Product) {
+    if (product.parentProductId) return;
+
+    onError(null);
+    setUpdatingId(product.id);
+
+    try {
+      const response = await fetch(`/api/admin/products/${product.id}/generate-variants`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ force: false }),
+      });
+      const body = (await response.json().catch(() => null)) as { error?: string } | null;
+      if (!response.ok || body?.error) {
+        throw new Error(body?.error ?? "Failed to generate variants");
+      }
+
+      await onReload();
+    } catch (error) {
+      onError(error instanceof Error ? error.message : "Failed to generate variants");
     } finally {
       setUpdatingId(null);
     }
@@ -2180,6 +2215,21 @@ function ProductsView({
                   </td>
                   <td className="px-5 py-3">
                     <div className="flex gap-2">
+                      {!product.parentProductId &&
+                      (childCountByParentId.get(product.id) ?? 0) === 0 &&
+                      product.scentOptions.length > 0 ? (
+                        <button
+                          type="button"
+                          className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold"
+                          disabled={updatingId === product.id}
+                          onClick={() => {
+                            void onGenerateVariants(product);
+                          }}
+                          title="Create child smell variants from scent options"
+                        >
+                          Generate smells
+                        </button>
+                      ) : null}
                       <button
                         type="button"
                         className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold"

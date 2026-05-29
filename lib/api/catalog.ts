@@ -171,6 +171,111 @@ export async function getProductVariants(parentProductId: string) {
   }));
 }
 
+export async function getRelatedProducts(input: {
+  productId: string;
+  categoryId: string;
+  notes: string[];
+  tag: ProductTag | null;
+  collectionIds: string[];
+  limit?: number;
+}) {
+  const limit = Math.min(Math.max(input.limit ?? 3, 1), 6);
+  const notes = input.notes.map((note) => note.trim()).filter(Boolean);
+  const noteSet = new Set(notes.map((note) => note.toLowerCase()));
+  const collectionIdSet = new Set(input.collectionIds);
+
+  const primaryCandidates = await db
+    .select({
+      product: products,
+      category: categories,
+    })
+    .from(products)
+    .innerJoin(categories, eq(products.categoryId, categories.id))
+    .where(
+      and(
+        eq(products.isActive, true),
+        sql`${products.parentProductId} is null`,
+        eq(products.categoryId, input.categoryId),
+        sql`${products.id} <> ${input.productId}`,
+      ),
+    )
+    .orderBy(desc(products.createdAt))
+    .limit(60);
+
+  const fallbackCandidates =
+    primaryCandidates.length >= limit
+      ? []
+      : await db
+          .select({
+            product: products,
+            category: categories,
+          })
+          .from(products)
+          .innerJoin(categories, eq(products.categoryId, categories.id))
+          .where(
+            and(
+              eq(products.isActive, true),
+              sql`${products.parentProductId} is null`,
+              sql`${products.id} <> ${input.productId}`,
+              sql`${products.categoryId} <> ${input.categoryId}`,
+            ),
+          )
+          .orderBy(desc(products.createdAt))
+          .limit(60);
+
+  const candidates = [...primaryCandidates, ...fallbackCandidates];
+  const productIds = candidates.map((item) => item.product.id);
+
+  const collectionRows =
+    productIds.length > 0
+      ? await db
+          .select({
+            productId: productCollections.productId,
+            collection: collections,
+          })
+          .from(productCollections)
+          .innerJoin(collections, eq(productCollections.collectionId, collections.id))
+          .where(inArray(productCollections.productId, productIds))
+          .orderBy(asc(collections.displayOrder), asc(collections.name))
+      : [];
+  const collectionsByProduct = groupCollectionsByProduct(collectionRows);
+
+  const scored = candidates.map((item) => {
+    const candidateCollections = collectionsByProduct.get(item.product.id) ?? [];
+    const candidateCollectionOverlap = candidateCollections.reduce(
+      (count, row) => count + (collectionIdSet.has(row.id) ? 1 : 0),
+      0,
+    );
+    const candidateNotes = item.product.notes ?? [];
+    const noteOverlap = candidateNotes.reduce(
+      (count, note) => count + (noteSet.has(String(note).toLowerCase()) ? 1 : 0),
+      0,
+    );
+    const tagScore = input.tag && item.product.tag === input.tag ? 5 : 0;
+    const bestSellerScore = item.product.isBestSeller ? 1 : 0;
+    const featuredScore = item.product.isFeatured ? 1 : 0;
+    const collectionScore = Math.min(candidateCollectionOverlap, 3) * 3;
+    const noteScore = Math.min(noteOverlap, 4) * 2;
+
+    return {
+      score: tagScore + bestSellerScore + featuredScore + collectionScore + noteScore,
+      createdAt: item.product.createdAt,
+      product: serializeProduct({
+        ...item.product,
+        category: item.category,
+        collections: candidateCollections,
+      }),
+    };
+  });
+
+  scored.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    return b.createdAt.getTime() - a.createdAt.getTime();
+  });
+
+  return scored.slice(0, limit).map((row) => row.product);
+}
+
 export async function getCategories() {
   const items = await db.select().from(categories).orderBy(asc(categories.name));
 

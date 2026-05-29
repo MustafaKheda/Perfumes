@@ -22,6 +22,9 @@ type ProductDetailPurchaseProps = {
   isWishlisted?: boolean;
   scentOptions: string[];
   variants?: ProductVariant[];
+  selectedScent?: string;
+  onSelectedScentChange?: (value: string) => void;
+  hideSelector?: boolean;
 };
 
 export default function ProductDetailPurchase({
@@ -35,23 +38,35 @@ export default function ProductDetailPurchase({
   isWishlisted,
   scentOptions,
   variants = [],
+  selectedScent: controlledSelectedScent,
+  onSelectedScentChange,
+  hideSelector = false,
 }: ProductDetailPurchaseProps) {
   const hasVariants = variants.length > 0;
   const initialOption = hasVariants ? variants[0]?.name ?? "" : scentOptions[0] ?? "";
-  const [selectedScent, setSelectedScent] = useState(initialOption);
+  const [uncontrolledSelectedScent, setUncontrolledSelectedScent] =
+    useState(initialOption);
+  const selectedScent = controlledSelectedScent ?? uncontrolledSelectedScent;
+  const setSelectedScent =
+    onSelectedScentChange ??
+    ((value: string) => {
+      setUncontrolledSelectedScent(value);
+    });
 
   const activeVariant = hasVariants
     ? variants.find((variant) => variant.name === selectedScent) ?? variants[0] ?? null
     : null;
 
-  const showSelector = (hasVariants ? variants.length : scentOptions.length) > 1;
+  // Matrix concept: if the parent has variants, always show the selector so users can
+  // explicitly choose the smell (even if only 1 variant exists).
+  const showSelector = hasVariants ? variants.length > 0 : scentOptions.length > 1;
   const activeProductId = activeVariant?.id ?? productId;
   const activeImage = activeVariant?.image ?? image;
   const activePrice = activeVariant?.price ?? price;
 
   return (
     <>
-      {showSelector ? (
+      {showSelector && !hideSelector ? (
         <ProductScentSelector
           options={hasVariants ? variants.map((variant) => variant.name) : scentOptions}
           selected={selectedScent}
