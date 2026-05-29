@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { secureAdminApi } from "@/lib/api/secure";
 
 const openApiSpec = {
   openapi: "3.0.3",
@@ -551,6 +552,9 @@ const openApiSpec = {
   },
 } as const;
 
-export function GET() {
+export async function GET(request: Request) {
+  const secured = await secureAdminApi(request, { id: "openapi" });
+  if (secured) return secured;
+
   return NextResponse.json(openApiSpec);
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { and, eq, sql } from "drizzle-orm";
 import { badRequest, unauthorized } from "@/lib/api/http";
+import { rateLimitOrResponse } from "@/lib/api/rate-limit";
 import { db } from "@/lib/db";
 import { cartItems, products } from "@/lib/db/schema";
 import { requireCustomerUser } from "@/lib/user-auth";
@@ -11,7 +12,10 @@ type CartBody = {
   scentOption?: unknown;
 };
 
-export async function GET() {
+export async function GET(request: Request) {
+  const limited = rateLimitOrResponse(request, { id: "cart:get", limit: 60, windowMs: 60_000 });
+  if (limited) return limited;
+
   const user = await requireCustomerUser();
 
   if (!user) {
@@ -51,6 +55,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const limited = rateLimitOrResponse(request, { id: "cart:post", limit: 30, windowMs: 60_000 });
+  if (limited) return limited;
+
   const user = await requireCustomerUser();
 
   if (!user) {
@@ -96,6 +103,9 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  const limited = rateLimitOrResponse(request, { id: "cart:patch", limit: 30, windowMs: 60_000 });
+  if (limited) return limited;
+
   const user = await requireCustomerUser();
 
   if (!user) {
@@ -129,6 +139,9 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const limited = rateLimitOrResponse(request, { id: "cart:delete", limit: 30, windowMs: 60_000 });
+  if (limited) return limited;
+
   const user = await requireCustomerUser();
 
   if (!user) {

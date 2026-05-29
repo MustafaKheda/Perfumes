@@ -1,5 +1,6 @@
 import { findCategoryBySlug, getProducts } from "@/lib/api/catalog";
 import { notFound, ok } from "@/lib/api/http";
+import { secureAdminApi } from "@/lib/api/secure";
 
 type RouteContext = {
   params: Promise<{
@@ -8,6 +9,9 @@ type RouteContext = {
 };
 
 export async function GET(request: Request, context: RouteContext) {
+  const secured = await secureAdminApi(request, { id: "category-products" });
+  if (secured) return secured;
+
   const { slug } = await context.params;
   const category = await findCategoryBySlug(slug);
 

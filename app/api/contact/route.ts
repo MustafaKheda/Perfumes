@@ -1,4 +1,5 @@
 import { badRequest, ok } from "@/lib/api/http";
+import { secureUserApi } from "@/lib/api/secure";
 import { db } from "@/lib/db";
 import { contactInquiries } from "@/lib/db/schema";
 
@@ -13,6 +14,9 @@ type ContactBody = {
 };
 
 export async function POST(request: Request) {
+  const secured = await secureUserApi(request, { id: "contact" });
+  if (secured) return secured;
+
   let body: ContactBody;
 
   try {

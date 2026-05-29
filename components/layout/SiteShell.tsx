@@ -1,25 +1,9 @@
-"use client";
-
 import type { ReactNode } from "react";
-import { usePathname } from "next/navigation";
-import Footer from "@/components/common/Footer";
-import Navbar from "@/components/common/Navbar";
-import PromoBar from "@/components/common/PromoBar";
+import { getSiteSettings } from "@/lib/site-settings";
+import SiteShellClient from "@/components/layout/SiteShellClient";
 
-export default function SiteShell({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
-  const isAdminRoute = pathname?.startsWith("/admin");
+export default async function SiteShell({ children }: { children: ReactNode }) {
+  const settings = await getSiteSettings();
 
-  if (isAdminRoute) {
-    return <>{children}</>;
-  }
-
-  return (
-    <>
-      <PromoBar />
-      <Navbar />
-      {children}
-      <Footer />
-    </>
-  );
+  return <SiteShellClient settings={settings}>{children}</SiteShellClient>;
 }

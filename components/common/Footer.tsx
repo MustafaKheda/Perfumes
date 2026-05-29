@@ -1,8 +1,5 @@
-"use client";
-
 import { Facebook, Instagram, Mail, Phone, X, Youtube } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
 
 type FooterSettings = {
     facebookUrl: string;
@@ -22,35 +19,19 @@ const defaultSettings: FooterSettings = {
     contactEmail: "support@scentora.com",
 };
 
-export default function Footer() {
-    const [settings, setSettings] = useState<FooterSettings>(defaultSettings);
-
-    useEffect(() => {
-        let mounted = true;
-
-        fetch("/api/site-settings")
-            .then((response) => (response.ok ? response.json() : null))
-            .then((body: { data?: Partial<FooterSettings> } | null) => {
-                if (!mounted || !body?.data) return;
-                setSettings((prev) => ({ ...prev, ...body.data }));
-            })
-            .catch(() => undefined);
-
-        return () => {
-            mounted = false;
-        };
-    }, []);
+export default function Footer({ settings }: { settings: FooterSettings }) {
+    const merged = { ...defaultSettings, ...settings };
 
     const socialLinks = [
-        { label: "Facebook", href: normalizeSocialUrl(settings.facebookUrl), icon: Facebook },
-        { label: "X", href: normalizeSocialUrl(settings.xUrl), icon: X },
-        { label: "YouTube", href: normalizeSocialUrl(settings.youtubeUrl), icon: Youtube },
-        { label: "Instagram", href: normalizeSocialUrl(settings.instagramUrl), icon: Instagram },
+        { label: "Facebook", href: normalizeSocialUrl(merged.facebookUrl), icon: Facebook },
+        { label: "X", href: normalizeSocialUrl(merged.xUrl), icon: X },
+        { label: "YouTube", href: normalizeSocialUrl(merged.youtubeUrl), icon: Youtube },
+        { label: "Instagram", href: normalizeSocialUrl(merged.instagramUrl), icon: Instagram },
     ].filter((item) => item.href.length > 0);
-    const phoneHref = settings.contactPhone
-        ? `tel:${settings.contactPhone.replace(/\s+/g, "")}`
+    const phoneHref = merged.contactPhone
+        ? `tel:${merged.contactPhone.replace(/\s+/g, "")}`
         : "#";
-    const emailHref = settings.contactEmail ? `mailto:${settings.contactEmail}` : "#";
+    const emailHref = merged.contactEmail ? `mailto:${merged.contactEmail}` : "#";
 
     return (
         <footer className=" text-textPrimary font-body">

@@ -1,10 +1,14 @@
 import { badRequest, ok } from "@/lib/api/http";
+import { secureUserApi } from "@/lib/api/secure";
 import { db } from "@/lib/db";
 import { newsletterSubscribers } from "@/lib/db/schema";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(request: Request) {
+  const secured = await secureUserApi(request, { id: "newsletter" });
+  if (secured) return secured;
+
   let body: unknown;
 
   try {

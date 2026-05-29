@@ -1,7 +1,11 @@
 import { getProducts } from "@/lib/api/catalog";
 import { ok } from "@/lib/api/http";
+import { secureAdminApi } from "@/lib/api/secure";
 
 export async function GET(request: Request) {
+  const secured = await secureAdminApi(request, { id: "products" });
+  if (secured) return secured;
+
   const { searchParams } = new URL(request.url);
 
   const result = await getProducts({
