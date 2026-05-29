@@ -86,7 +86,7 @@ export async function POST(request: Request) {
       target: [wishlistItems.userId, wishlistItems.productId],
     });
 
-  return GET();
+  return GET(request);
 }
 
 export async function DELETE(request: Request) {
@@ -114,7 +114,7 @@ export async function DELETE(request: Request) {
       ),
     );
 
-  return GET();
+  return GET(request);
 }
 
 async function readProductId(request: Request) {

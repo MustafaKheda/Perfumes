@@ -1,13 +1,13 @@
 import { clerkMiddleware } from "@clerk/nextjs/server";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, type NextFetchEvent } from "next/server";
 
 const HOME_SEEN_COOKIE = "scentora_home_seen";
 
 const clerk = clerkMiddleware();
 
-export function proxy(request: NextRequest) {
+export function proxy(request: NextRequest, event: NextFetchEvent) {
   // Let Clerk handle auth/proxy endpoints first.
-  const clerkResponse = clerk(request);
+  const clerkResponse = clerk(request, event);
   if (clerkResponse) {
     return clerkResponse;
   }

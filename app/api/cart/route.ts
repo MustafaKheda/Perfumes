@@ -99,7 +99,7 @@ export async function POST(request: Request) {
       },
     });
 
-  return GET();
+  return GET(request);
 }
 
 export async function PATCH(request: Request) {
@@ -135,7 +135,7 @@ export async function PATCH(request: Request) {
       ),
     );
 
-  return GET();
+  return GET(request);
 }
 
 export async function DELETE(request: Request) {
@@ -166,7 +166,7 @@ export async function DELETE(request: Request) {
       ),
     );
 
-  return GET();
+  return GET(request);
 }
 
 function normalizeScentOption(value: unknown) {
