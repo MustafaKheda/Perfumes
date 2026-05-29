@@ -294,6 +294,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 slug={product.slug}
                 isWishlisted={wishlistProductIds.has(product.id)}
                 scentOptions={scentOptions}
+                variants={variants}
               />
             </section>
 

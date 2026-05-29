@@ -2006,30 +2006,47 @@ function ProductsView({
   onError: Dispatch<SetStateAction<string | null>>;
 }) {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    modelNo: "",
+    image: "",
+    price: "",
+    stock: "",
+  });
 
   async function onEdit(product: Product) {
-    const name = window.prompt("Product name", product.name);
-    if (name === null) return;
-    const modelNo = window.prompt("Model no", product.modelNo);
-    if (modelNo === null) return;
-    const image = window.prompt("Image URL", product.image);
-    if (image === null) return;
-    const priceText = window.prompt("Selling price", String(product.price));
-    if (priceText === null) return;
-    const stockText = window.prompt("Stock", String(product.stock));
-    if (stockText === null) return;
+    setEditingProduct(product);
+    setEditForm({
+      name: product.name,
+      modelNo: product.modelNo,
+      image: product.image,
+      price: String(product.price),
+      stock: String(product.stock),
+    });
+  }
 
-    setUpdatingId(product.id);
+  async function onSubmitEdit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editingProduct) return;
+    setUpdatingId(editingProduct.id);
     onError(null);
     try {
-      const response = await fetch(`/api/admin/products/${product.id}`, {
+      const response = await fetch(`/api/admin/products/${editingProduct.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, modelNo, image, price: Number(priceText), stock: Number(stockText) }),
+        body: JSON.stringify({
+          name: editForm.name,
+          modelNo: editForm.modelNo,
+          image: editForm.image,
+          price: Number(editForm.price),
+          stock: Number(editForm.stock),
+        }),
       });
       const body = (await response.json().catch(() => null)) as { error?: string } | null;
       if (!response.ok || body?.error) throw new Error(body?.error ?? "Failed to update product");
       await onReload();
+      setEditingProduct(null);
     } catch (error) {
       onError(error instanceof Error ? error.message : "Failed to update product");
     } finally {
@@ -2193,6 +2210,80 @@ function ProductsView({
       ) : (
         <EmptyState title="No products found" />
       )}
+
+      {editingProduct ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 p-4">
+          <div className="w-full max-w-xl rounded-lg border border-slate-200 bg-white p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="font-heading text-2xl font-semibold">Edit product</h3>
+              <button
+                type="button"
+                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold"
+                onClick={() => setEditingProduct(null)}
+              >
+                Close
+              </button>
+            </div>
+            <form onSubmit={onSubmitEdit} className="grid gap-4 md:grid-cols-2">
+              <InputField
+                label="Name"
+                value={editForm.name}
+                onChange={(value) => setEditForm((prev) => ({ ...prev, name: value }))}
+                className="md:col-span-2"
+                required
+              />
+              <InputField
+                label="Model no"
+                value={editForm.modelNo}
+                onChange={(value) =>
+                  setEditForm((prev) => ({ ...prev, modelNo: value.toUpperCase() }))
+                }
+                required
+              />
+              <InputField
+                label="Image URL"
+                value={editForm.image}
+                onChange={(value) => setEditForm((prev) => ({ ...prev, image: value }))}
+                required
+              />
+              <InputField
+                label="Selling price"
+                type="number"
+                min="0"
+                step="0.01"
+                value={editForm.price}
+                onChange={(value) => setEditForm((prev) => ({ ...prev, price: value }))}
+                required
+              />
+              <InputField
+                label="Stock"
+                type="number"
+                min="0"
+                step="1"
+                value={editForm.stock}
+                onChange={(value) => setEditForm((prev) => ({ ...prev, stock: value }))}
+                required
+              />
+              <div className="md:col-span-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold"
+                  onClick={() => setEditingProduct(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={updatingId === editingProduct.id}
+                  className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                >
+                  {updatingId === editingProduct.id ? "Saving..." : "Save changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
