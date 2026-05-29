@@ -7,6 +7,7 @@
     "build": "node scripts/build.mjs",
     "start": "next start",
     "lint": "eslint",
+    "bones:build": "boneyard-js build --out ./bones",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
@@ -15,6 +16,7 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^7.4.2",
+    "boneyard-js": "^1.8.1",
     "cloudinary": "^2.10.0",
     "country-state-city": "^3.2.1",
     "drizzle-orm": "^0.45.2",

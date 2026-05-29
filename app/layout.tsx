@@ -1,5 +1,6 @@
 import {ClerkProvider} from "@clerk/nextjs";
 import "./globals.css";
+import "@/bones/registry";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import SiteShell from "@/components/layout/SiteShell";
