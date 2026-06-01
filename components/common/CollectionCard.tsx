@@ -1,23 +1,25 @@
 import Image from "next/image";
+import Link from "next/link";
 import ArrowIcon from "./ArrowIcon";
 
 interface CollectionCardProps {
   name: string;
   count: string;
   images: string[];
-  onClick?: () => void;
+  href: string;
 }
 
 export default function CollectionCard({
   name,
   count,
   images,
-  onClick,
+  href,
 }: CollectionCardProps) {
   return (
-    <div
-      onClick={onClick}
-      className="cursor-pointer group"
+    <Link
+      href={href}
+      className="block cursor-pointer group"
+      aria-label={`Open ${name}`}
     >
       {/* Images Grid */}
       <div className="grid grid-cols-2 gap-4 mb-5 rounded-3xl overflow-hidden">
@@ -54,6 +56,6 @@ export default function CollectionCard({
           />
         </div>
       </div>
-    </div>
+    </Link>
   );
 }

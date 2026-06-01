@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import { notFound } from "next/navigation";
-import ProductDetailActions from "@/components/ProductDetailActions";
+import { BadgeCheck, Clock3, PackageCheck, Sparkles } from "lucide-react";
 import { Breadcrumb } from "@/components/common/Breadcrumb";
 import Newsletter from "@/components/common/Newsletter";
-import { findProductByIdOrSlug } from "@/lib/api/catalog";
+import ProductCardLarge from "@/components/ProductCardLarge";
+import ProductDetailVariantClient from "@/components/ProductDetailVariantClient";
+import { findProductByIdOrSlug, getProductVariants, getRelatedProducts } from "@/lib/api/catalog";
 import { getWishlistProductIdSet } from "@/lib/api/wishlist";
 
 type ProductPageProps = {
@@ -29,21 +30,27 @@ export async function generateMetadata({
     };
   }
 
-  const title = `${product.name} | Scentora Perfume`;
-  const description = product.detailedDescription ?? product.description;
-  const canonical = `/products/${product.slug}`;
+  const title = product.seoTitle ?? `${product.name} Perfume | Scentora`;
+  const description =
+    product.seoDescription ?? product.detailedDescription ?? product.description;
+  const canonical = product.seoUrl ?? `/products/${product.slug}`;
+  const keywords =
+    product.seoKeywords.length > 0
+      ? product.seoKeywords
+      : [
+          product.name,
+          product.modelNo,
+          "Scentora",
+          "perfume",
+          "fragrance",
+          product.categoryDetails.name,
+          ...product.notes,
+        ];
 
   return {
     title,
     description,
-    keywords: [
-      product.name,
-      "Scentora",
-      "perfume",
-      "fragrance",
-      product.categoryDetails.name,
-      ...product.notes,
-    ],
+    keywords,
     alternates: {
       canonical,
     },
@@ -82,8 +89,33 @@ export default async function ProductPage({ params }: ProductPageProps) {
     notFound();
   }
 
-  const productUrl = `${siteUrl}/products/${product.slug}`;
-  const description = product.detailedDescription ?? product.description;
+  const productPath = product.seoUrl ?? `/products/${product.slug}`;
+  const productUrl = productPath.startsWith("http")
+    ? productPath
+    : `${siteUrl}${productPath}`;
+  const shoppingDescription =
+    product.googleShoppingDescription ??
+    product.seoDescription ??
+    product.detailedDescription ??
+    product.description;
+  const productDetailHtml =
+    product.productDetailHtml ?? buildDefaultProductDetailHtml(product);
+  const variants = await getProductVariants(product.id);
+  const relatedProducts = await getRelatedProducts({
+    productId: product.id,
+    categoryId: product.categoryDetails.id,
+    notes: product.notes,
+    tag: product.tag ?? null,
+    collectionIds: product.collectionDetails.map((collection: { id: string }) => collection.id),
+    limit: 3,
+  });
+  const collectionLabel =
+    product.collectionDetails
+      .map((collection: { name: string }) => collection.name)
+      .join(", ") ||
+    "Scentora";
+  const heroNotes =
+    product.notes.length > 0 ? product.notes.slice(0, 4) : ["Amber", "Vanilla", "Sandalwood"];
   const availability =
     product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock";
 
@@ -92,8 +124,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
     "@type": "Product",
     name: product.name,
     image: [product.image],
-    description,
-    sku: product.id,
+    description: shoppingDescription,
+    sku: product.modelNo,
     brand: {
       "@type": "Brand",
       name: "Scentora",
@@ -107,9 +139,16 @@ export default async function ProductPage({ params }: ProductPageProps) {
       },
       {
         "@type": "PropertyValue",
+        name: "Google Shopping Description",
+        value: shoppingDescription,
+      },
+      {
+        "@type": "PropertyValue",
         name: "Collection",
         value:
-          product.collectionDetails.map((collection) => collection.name).join(", ") ||
+          product.collectionDetails
+            .map((collection: { name: string }) => collection.name)
+            .join(", ") ||
           "Scentora",
       },
     ],
@@ -149,8 +188,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
   };
 
   return (
-    <main className="min-h-screen text-textPrimary">
-      <section className="mx-auto w-full max-w-[1300px] px-4 py-8 font-body lg:px-6">
+    <main className="min-h-screen overflow-hidden bg-[#fffaf0] text-textPrimary">
+      <section className="mx-auto w-full max-w-[1360px] px-4 py-6 font-body lg:px-6 lg:py-8">
         <Breadcrumb
           items={[
             { label: "Home", href: "/" },
@@ -159,85 +198,120 @@ export default async function ProductPage({ params }: ProductPageProps) {
           ]}
         />
 
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:items-start">
-          <div className="relative aspect-square overflow-hidden rounded-2xl bg-black/5 shadow-img">
-            <Image
-              src={product.image}
-              alt={`${product.name} perfume bottle`}
-              fill
-              sizes="(max-width: 1024px) 100vw, 48vw"
-              className="object-cover"
-              priority
-            />
-            {product.tag ? (
-              <span className="absolute left-4 top-4 rounded-full bg-red-500 px-3 py-1 text-xs font-bold text-white">
-                {product.tag}
-              </span>
-            ) : null}
-          </div>
+        <ProductDetailVariantClient
+          product={{
+            id: product.id,
+            name: product.name,
+            slug: product.slug,
+            image: product.image,
+            modelNo: product.modelNo,
+            description: product.description,
+            price: product.price,
+            stock: product.stock,
+            notes: product.notes,
+            scentOptions: product.scentOptions,
+            tag: product.tag,
+            categoryDetails: { name: product.categoryDetails.name },
+          }}
+          collectionLabel={collectionLabel}
+          heroNotes={heroNotes}
+          variants={variants.map((variant) => ({
+            id: variant.id,
+            name: variant.name,
+            modelNo: variant.modelNo,
+            image: variant.image,
+            price: variant.price,
+            stock: variant.stock,
+          }))}
+          isWishlisted={wishlistProductIds.has(product.id)}
+        />
 
-          <div className="rounded-lg border border-black/10 bg-white p-5 shadow-sm sm:p-7">
-            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-textSecondary">
-              {product.categoryDetails.name}
-            </p>
-            <h1 className="mt-2 font-heading text-4xl font-semibold leading-tight md:text-6xl">
-              {product.name}
-            </h1>
-            <p className="mt-4 text-3xl font-semibold text-accent">
-              ${product.price.toFixed(2)}
-            </p>
-
-            <div className="mt-5">
-              <p className="text-sm leading-7 text-textSecondary md:text-base">
-                {product.detailedDescription ?? product.description}
-              </p>
+        <section className="mt-12 grid gap-5 lg:grid-cols-[0.82fr_1.18fr]">
+          <div className="rounded-2xl bg-[#20150f] p-6 text-white md:p-8">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/12">
+              <Sparkles className="h-5 w-5 text-accentLight" aria-hidden="true" />
             </div>
+            <h2 className="mt-5 font-heading text-3xl font-semibold">
+              Built around a memorable scent trail
+            </h2>
+            <p className="mt-4 text-sm leading-7 text-white/72">
+              {product.name} is presented with a clear fragrance profile, selectable smell
+              options, and product identifiers so customers can compare, remember, and reorder
+              with confidence.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {heroNotes.map((note: string, index: number) => (
+              <ScentNoteCard
+                key={note}
+                note={note}
+                index={index}
+                productName={product.name}
+              />
+            ))}
+          </div>
+        </section>
 
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <DetailItem label="Stock" value={product.stock > 0 ? `${product.stock} available` : "Out of stock"} />
-              <DetailItem label="Category" value={product.categoryDetails.name} />
-              <DetailItem label="Notes" value={product.notes.join(", ") || "Signature blend"} />
-              <DetailItem
-                label="Collections"
-                value={
-                  product.collectionDetails.map((collection) => collection.name).join(", ") ||
-                  "Scentora"
-                }
+        <section
+          id="detailed-description"
+          className="mt-12 overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm"
+        >
+          <div className="grid gap-0 lg:grid-cols-[0.72fr_1.28fr]">
+            <div className="bg-[#f7edd8] p-6 md:p-8">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-textSecondary">
+                Detail guide
+              </p>
+              <h2 className="mt-2 font-heading text-3xl font-semibold">
+                {product.name} fragrance story
+              </h2>
+              <div className="mt-6 grid gap-3">
+                <GuideRow icon={<Clock3 className="h-4 w-4" />} label="Best for" value="Daily wear, gifting, evening plans" />
+                <GuideRow icon={<PackageCheck className="h-4 w-4" />} label="Stock status" value={product.stock > 0 ? "Ready to ship" : "Temporarily unavailable"} />
+                <GuideRow icon={<BadgeCheck className="h-4 w-4" />} label="Reference" value={product.modelNo} />
+              </div>
+            </div>
+            <div className="p-6 md:p-8">
+              <div
+                className="space-y-4 text-sm leading-7 text-textSecondary md:text-base [&_b]:text-textPrimary [&_li]:pl-1 [&_p]:max-w-4xl [&_ul]:grid [&_ul]:list-disc [&_ul]:gap-2 [&_ul]:pl-5 md:[&_ul]:grid-cols-2"
+                dangerouslySetInnerHTML={{ __html: productDetailHtml }}
               />
             </div>
-
-            <div className="mt-7">
-              <ProductDetailActions
-                productId={product.id}
-                name={product.name}
-                image={product.image}
-                price={product.price}
-                notes={product.notes.join(", ")}
-                tag={product.tag}
-                slug={product.slug}
-                isWishlisted={wishlistProductIds.has(product.id)}
-              />
-            </div>
-
-            <div className="mt-7 rounded-lg bg-[#f6f1ea] p-4 text-sm leading-6 text-textSecondary">
-              <p className="font-semibold text-textPrimary">Why this fragrance</p>
-              <p>
-                Crafted for daily wear and special moments, with a balanced note
-                profile designed for lasting impression.
-              </p>
-            </div>
           </div>
-        </div>
-
-        <section className="mt-12 grid gap-4 md:grid-cols-3">
-          <InfoCard title="Next day delivery" text="Orders arrive next day from 5 to 9 PM where available." />
-          <InfoCard title="Authentic scent" text="Every product is stored and fulfilled from Scentora catalog data." />
-          <InfoCard title="Gift ready" text="Premium fragrance presentation for personal use or gifting." />
         </section>
 
         <section className="pt-12">
           <Newsletter />
         </section>
+
+        {relatedProducts.length > 0 ? (
+          <section className="pt-12">
+            <div className="mb-6 flex items-end justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-textSecondary">
+                  Similar picks
+                </p>
+                <h2 className="mt-2 font-heading text-3xl font-semibold text-textPrimary">
+                  You may also like
+                </h2>
+              </div>
+            </div>
+            <div className="grid gap-5 md:grid-cols-3">
+              {relatedProducts.map((item) => (
+                <ProductCardLarge
+                  key={item.id}
+                  productId={item.id}
+                  image={item.image}
+                  name={item.name}
+                  notes={(item.notes ?? []).slice(0, 3).join(", ")}
+                  price={item.price.toFixed(2)}
+                  tag={item.tag ?? undefined}
+                  slug={item.slug}
+                  isWishlisted={wishlistProductIds.has(item.id)}
+                />
+              ))}
+            </div>
+          </section>
+        ) : null}
       </section>
 
       <script
@@ -252,22 +326,76 @@ export default async function ProductPage({ params }: ProductPageProps) {
   );
 }
 
-function DetailItem({ label, value }: { label: string; value: string }) {
+function buildDefaultProductDetailHtml(product: NonNullable<Awaited<ReturnType<typeof findProductByIdOrSlug>>>) {
+  const notes = product.notes.length > 0 ? product.notes : ["Amber", "Vanilla", "Sandalwood"];
+  const [first, second, third] = notes;
+
+  return `
+    <p>${product.name} is designed as a polished signature perfume with a refined opening, smooth heart, and comfortable long-lasting base. The fragrance balances ${first ?? "warmth"} with ${second ?? "softness"} so it feels premium without becoming overwhelming. It is suitable for daily wear, evening plans, gifting, and customers who want a scent that feels confident, clean, and memorable.</p>
+    <p><b>Features</b></p>
+    <ul>
+      <li>Professional fragrance profile with ${notes.join(", ")}.</li>
+      <li>Balanced scent trail for personal wear and special occasions.</li>
+      <li>Premium presentation suitable for gifting.</li>
+      <li>Comfortable blend that works across seasons.</li>
+      <li>Authentic Scentora catalog product with store-managed details.</li>
+      <li>Recommended smell option: ${third ?? first ?? "Signature blend"}.</li>
+    </ul>
+  `;
+}
+
+
+function ScentNoteCard({
+  note,
+  index,
+  productName,
+}: {
+  note: string;
+  index: number;
+  productName: string;
+}) {
+  const labels = ["Opening", "Heart", "Base", "Trail"];
+  const tones = [
+    "bg-[#fff3d8]",
+    "bg-[#f2eadf]",
+    "bg-[#eaf1e7]",
+    "bg-[#f5e5db]",
+  ];
+
   return (
-    <div className="rounded-lg border border-black/10 p-3">
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-textSecondary">
-        {label}
+    <article className={`rounded-2xl border border-black/10 p-5 ${tones[index % tones.length]}`}>
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-textSecondary">
+        {labels[index] ?? "Note"}
       </p>
-      <p className="mt-1 text-sm font-semibold text-textPrimary">{value}</p>
-    </div>
+      <h3 className="mt-3 font-heading text-3xl font-semibold">{note}</h3>
+      <p className="mt-3 text-sm leading-6 text-textSecondary">
+        A key part of {productName}&apos;s profile, selected to make the scent feel
+        recognizable and polished.
+      </p>
+    </article>
   );
 }
 
-function InfoCard({ title, text }: { title: string; text: string }) {
+function GuideRow({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
   return (
-    <article className="rounded-lg border border-black/10 bg-white p-5 shadow-sm">
-      <h2 className="font-heading text-2xl font-semibold">{title}</h2>
-      <p className="mt-2 text-sm leading-6 text-textSecondary">{text}</p>
-    </article>
+    <div className="flex gap-3 rounded-lg bg-white/70 p-3">
+      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-accent">
+        {icon}
+      </div>
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-textSecondary">
+          {label}
+        </p>
+        <p className="mt-1 text-sm font-semibold text-textPrimary">{value}</p>
+      </div>
+    </div>
   );
 }

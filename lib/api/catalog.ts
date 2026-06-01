@@ -101,9 +101,16 @@ export async function getProducts(query: ProductQuery) {
 }
 
 export async function findProductByIdOrSlug(idOrSlug: string) {
+  const normalized = idOrSlug.trim();
+  const legacyModelNo = numericToLegacyModelNo(normalized);
   const productIdentifier = isUuid(idOrSlug)
     ? or(eq(products.id, idOrSlug), eq(products.slug, idOrSlug))
-    : eq(products.slug, idOrSlug);
+    : or(
+        eq(products.slug, idOrSlug),
+        eq(products.seoUrl, idOrSlug),
+        eq(products.seoUrl, `/products/${idOrSlug}`),
+        ...(legacyModelNo ? [eq(products.modelNo, legacyModelNo)] : []),
+      );
   const [row] = await db
     .select({
       product: products,
@@ -137,6 +144,139 @@ export async function findProductByIdOrSlug(idOrSlug: string) {
     category: row.category,
     collections: collectionRows.map((item) => item.collection),
   });
+}
+
+export async function getProductVariants(parentProductId: string) {
+  const rows = await db
+    .select({
+      id: products.id,
+      parentProductId: products.parentProductId,
+      name: products.name,
+      modelNo: products.modelNo,
+      image: products.image,
+      price: products.price,
+      stock: products.stock,
+      isActive: products.isActive,
+    })
+    .from(products)
+    .where(and(eq(products.parentProductId, parentProductId), eq(products.isActive, true)))
+    .orderBy(asc(products.name));
+
+  return rows.map((row) => ({
+    id: row.id,
+    parentProductId: row.parentProductId,
+    name: row.name,
+    modelNo: row.modelNo,
+    image: row.image,
+    price: Number(row.price),
+    stock: row.stock,
+    isActive: row.isActive,
+  }));
+}
+
+export async function getRelatedProducts(input: {
+  productId: string;
+  categoryId: string;
+  notes: string[];
+  tag: ProductTag | null;
+  collectionIds: string[];
+  limit?: number;
+}) {
+  const limit = Math.min(Math.max(input.limit ?? 3, 1), 6);
+  const notes = input.notes.map((note) => note.trim()).filter(Boolean);
+  const noteSet = new Set(notes.map((note) => note.toLowerCase()));
+  const collectionIdSet = new Set(input.collectionIds);
+
+  const primaryCandidates = await db
+    .select({
+      product: products,
+      category: categories,
+    })
+    .from(products)
+    .innerJoin(categories, eq(products.categoryId, categories.id))
+    .where(
+      and(
+        eq(products.isActive, true),
+        sql`${products.parentProductId} is null`,
+        eq(products.categoryId, input.categoryId),
+        sql`${products.id} <> ${input.productId}`,
+      ),
+    )
+    .orderBy(desc(products.createdAt))
+    .limit(60);
+
+  const fallbackCandidates =
+    primaryCandidates.length >= limit
+      ? []
+      : await db
+          .select({
+            product: products,
+            category: categories,
+          })
+          .from(products)
+          .innerJoin(categories, eq(products.categoryId, categories.id))
+          .where(
+            and(
+              eq(products.isActive, true),
+              sql`${products.parentProductId} is null`,
+              sql`${products.id} <> ${input.productId}`,
+              sql`${products.categoryId} <> ${input.categoryId}`,
+            ),
+          )
+          .orderBy(desc(products.createdAt))
+          .limit(60);
+
+  const candidates = [...primaryCandidates, ...fallbackCandidates];
+  const productIds = candidates.map((item) => item.product.id);
+
+  const collectionRows =
+    productIds.length > 0
+      ? await db
+          .select({
+            productId: productCollections.productId,
+            collection: collections,
+          })
+          .from(productCollections)
+          .innerJoin(collections, eq(productCollections.collectionId, collections.id))
+          .where(inArray(productCollections.productId, productIds))
+          .orderBy(asc(collections.displayOrder), asc(collections.name))
+      : [];
+  const collectionsByProduct = groupCollectionsByProduct(collectionRows);
+
+  const scored = candidates.map((item) => {
+    const candidateCollections = collectionsByProduct.get(item.product.id) ?? [];
+    const candidateCollectionOverlap = candidateCollections.reduce(
+      (count, row) => count + (collectionIdSet.has(row.id) ? 1 : 0),
+      0,
+    );
+    const candidateNotes = item.product.notes ?? [];
+    const noteOverlap = candidateNotes.reduce(
+      (count, note) => count + (noteSet.has(String(note).toLowerCase()) ? 1 : 0),
+      0,
+    );
+    const tagScore = input.tag && item.product.tag === input.tag ? 5 : 0;
+    const bestSellerScore = item.product.isBestSeller ? 1 : 0;
+    const featuredScore = item.product.isFeatured ? 1 : 0;
+    const collectionScore = Math.min(candidateCollectionOverlap, 3) * 3;
+    const noteScore = Math.min(noteOverlap, 4) * 2;
+
+    return {
+      score: tagScore + bestSellerScore + featuredScore + collectionScore + noteScore,
+      createdAt: item.product.createdAt,
+      product: serializeProduct({
+        ...item.product,
+        category: item.category,
+        collections: candidateCollections,
+      }),
+    };
+  });
+
+  scored.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    return b.createdAt.getTime() - a.createdAt.getTime();
+  });
+
+  return scored.slice(0, limit).map((row) => row.product);
 }
 
 export async function getCategories() {
@@ -181,7 +321,7 @@ export async function findCollectionBySlug(slug: string) {
 }
 
 async function buildProductWhere(query: ProductQuery) {
-  const filters: SQL[] = [eq(products.isActive, true)];
+  const filters: SQL[] = [eq(products.isActive, true), sql`${products.parentProductId} is null`];
 
   if (query.category && query.category !== "all") {
     const category = await db.query.categories.findFirst({
@@ -233,7 +373,10 @@ async function buildProductWhere(query: ProductQuery) {
       filters.push(
         or(
           ilike(products.name, `%${search}%`),
+          ilike(products.modelNo, `%${search}%`),
           ilike(products.description, `%${search}%`),
+          ilike(products.seoTitle, `%${search}%`),
+          ilike(products.seoDescription, `%${search}%`),
           sql`${products.notes} @> ARRAY[${search}]::text[]`,
         )!,
       );
@@ -303,17 +446,25 @@ function groupCollectionsByProduct(
 function serializeProduct(product: ProductWithRelations) {
   return {
     id: product.id,
+    modelNo: product.modelNo,
     slug: product.slug,
     image: product.image,
     name: product.name,
     description: product.description,
     detailedDescription: product.detailedDescription,
+    productDetailHtml: product.productDetailHtml,
+    seoUrl: product.seoUrl,
+    seoTitle: product.seoTitle,
+    seoDescription: product.seoDescription,
+    seoKeywords: product.seoKeywords,
+    googleShoppingDescription: product.googleShoppingDescription,
     notes: product.notes,
+    scentOptions: product.scentOptions,
     price: Number(product.price),
     tag: product.tag,
     category: product.category.slug,
     categoryDetails: serializeCategory(product.category),
-    collections: product.collections.map((item) => item.slug),
+    collections: product.collections.map((item: { slug: string }) => item.slug),
     collectionDetails: product.collections.map(serializeCollection),
     stock: product.stock,
     isBestSeller: product.isBestSeller,
@@ -364,4 +515,17 @@ function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     value,
   );
+}
+
+function numericToLegacyModelNo(value: string) {
+  if (!/^\d+$/.test(value)) {
+    return null;
+  }
+
+  const numberValue = Number(value);
+  if (!Number.isInteger(numberValue) || numberValue < 1 || numberValue > 999) {
+    return null;
+  }
+
+  return `SCT-${String(numberValue).padStart(3, "0")}`;
 }

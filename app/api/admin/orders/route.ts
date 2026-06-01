@@ -130,32 +130,36 @@ function parsePaymentStatus(value: string | null) {
   return null;
 }
 
-function serializeOrder(
-  order: typeof orders.$inferSelect & {
-    items: Array<{
-      id: string;
-      productId: string;
-      name: string;
-      image: string;
-      price: string;
-      quantity: number;
-    }>;
-    statusHistory: Array<{
-      id: string;
-      status: OrderStatus;
-      note: string | null;
-      changedByAdminId: string | null;
-      createdAt: Date;
-    }>;
-  },
-) {
+type OrderSerializeSource = {
+  id: string;
+  userId: string | null;
+  customerEmail: string;
+  customerName: string | null;
+  customerPhone: string | null;
+  shippingAddress: unknown;
+  paymentMethod: string;
+  subtotal: string | number;
+  shippingFee: string | number;
+  totalAmount: string | number;
+  status: string;
+  paymentStatus: string;
+  createdAt: Date;
+  updatedAt: Date;
+  items: Array<Record<string, unknown>>;
+  statusHistory: Array<Record<string, unknown>>;
+};
+
+function serializeOrder(order: OrderSerializeSource) {
   return {
     id: order.id,
     userId: order.userId,
     customerEmail: order.customerEmail,
     customerName: order.customerName,
     customerPhone: order.customerPhone,
-    shippingAddress: order.shippingAddress,
+    shippingAddress:
+      typeof order.shippingAddress === "string"
+        ? order.shippingAddress
+        : JSON.stringify(order.shippingAddress ?? {}),
     paymentMethod: order.paymentMethod,
     subtotal: Number(order.subtotal),
     shippingFee: Number(order.shippingFee),
@@ -163,19 +167,24 @@ function serializeOrder(
     status: order.status,
     paymentStatus: order.paymentStatus,
     items: order.items.map((item) => ({
-      id: item.id,
-      productId: item.productId,
-      name: item.name,
-      image: item.image,
-      price: Number(item.price),
-      quantity: item.quantity,
+      id: String(item.id ?? ""),
+      productId: typeof item.productId === "string" ? item.productId : null,
+      name: String(item.name ?? ""),
+      image: String(item.image ?? ""),
+      scentOption: typeof item.scentOption === "string" ? item.scentOption : null,
+      price: Number(item.price ?? 0),
+      quantity: Number(item.quantity ?? 0),
     })),
     statusHistory: order.statusHistory.map((entry) => ({
-      id: entry.id,
-      status: entry.status,
-      note: entry.note,
-      changedByAdminId: entry.changedByAdminId,
-      createdAt: entry.createdAt.toISOString(),
+      id: String(entry.id ?? ""),
+      status: String(entry.status ?? ""),
+      note: typeof entry.note === "string" ? entry.note : null,
+      changedByAdminId:
+        typeof entry.changedByAdminId === "string" ? entry.changedByAdminId : null,
+      createdAt:
+        entry.createdAt instanceof Date
+          ? entry.createdAt.toISOString()
+          : new Date(String(entry.createdAt ?? "")).toISOString(),
     })),
     createdAt: order.createdAt.toISOString(),
     updatedAt: order.updatedAt.toISOString(),

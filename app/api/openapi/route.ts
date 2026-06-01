@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { secureAdminApi } from "@/lib/api/secure";
 
 const openApiSpec = {
   openapi: "3.0.3",
@@ -392,10 +393,16 @@ const openApiSpec = {
         type: "object",
         required: [
           "id",
+          "modelNo",
           "slug",
           "image",
           "name",
           "description",
+          "seoUrl",
+          "seoTitle",
+          "seoDescription",
+          "seoKeywords",
+          "googleShoppingDescription",
           "notes",
           "price",
           "tag",
@@ -412,10 +419,16 @@ const openApiSpec = {
         ],
         properties: {
           id: { type: "string" },
+          modelNo: { type: "string" },
           slug: { type: "string" },
           image: { type: "string" },
           name: { type: "string" },
           description: { type: "string" },
+          seoUrl: { type: "string", nullable: true },
+          seoTitle: { type: "string", nullable: true },
+          seoDescription: { type: "string", nullable: true },
+          seoKeywords: { type: "array", items: { type: "string" } },
+          googleShoppingDescription: { type: "string", nullable: true },
           notes: { type: "array", items: { type: "string" } },
           price: { type: "number", format: "float" },
           tag: {
@@ -539,6 +552,9 @@ const openApiSpec = {
   },
 } as const;
 
-export function GET() {
+export async function GET(request: Request) {
+  const secured = await secureAdminApi(request, { id: "openapi" });
+  if (secured) return secured;
+
   return NextResponse.json(openApiSpec);
 }

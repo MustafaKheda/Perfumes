@@ -12,18 +12,29 @@ import {
 } from "@/lib/db/schema";
 
 type CreateProductBody = {
+  modelNo?: unknown;
   name?: unknown;
   slug?: unknown;
   description?: unknown;
+  detailedDescription?: unknown;
+  productDetailHtml?: unknown;
+  seoUrl?: unknown;
+  seoTitle?: unknown;
+  seoDescription?: unknown;
+  seoKeywords?: unknown;
+  googleShoppingDescription?: unknown;
   image?: unknown;
   imagePublicId?: unknown;
+  purchasePrice?: unknown;
   price?: unknown;
   stock?: unknown;
   tag?: unknown;
   notes?: unknown;
+  scentOptions?: unknown;
   isBestSeller?: unknown;
   isFeatured?: unknown;
   isActive?: unknown;
+  parentProductId?: unknown;
   categoryId?: unknown;
   collectionIds?: unknown;
 };
@@ -77,22 +88,37 @@ export async function POST(request: Request) {
 
   const name = toNonEmptyString(body.name);
   const description = toNonEmptyString(body.description);
+  const detailedDescription = toOptionalString(body.detailedDescription);
+  const productDetailHtml = toOptionalString(body.productDetailHtml);
   const image = toNonEmptyString(body.image);
   const categoryId = toNonEmptyString(body.categoryId);
   const slug = normalizeSlug(body.slug, name);
+  const modelNo = normalizeModelNo(body.modelNo, slug);
+  const notes = toStringArray(body.notes);
+  const seoUrl = normalizeSeoUrl(body.seoUrl, slug);
+  const seoTitle = toOptionalString(body.seoTitle) ?? buildSeoTitle(name);
+  const seoDescription =
+    toOptionalString(body.seoDescription) ??
+    buildSeoDescription(name, description, notes);
+  const seoKeywords = toStringArray(body.seoKeywords);
+  const googleShoppingDescription =
+    toOptionalString(body.googleShoppingDescription) ??
+    buildGoogleShoppingDescription(name, description, notes);
+  const purchasePrice = toPrice(body.purchasePrice) ?? 0;
   const price = toPrice(body.price);
   const stock = toInteger(body.stock);
   const tag = toTag(body.tag);
-  const notes = toStringArray(body.notes);
+  const scentOptions = toStringArray(body.scentOptions);
   const imagePublicId = toOptionalString(body.imagePublicId);
   const collectionIds = toCollectionIds(body.collectionIds);
+  const parentProductId = toOptionalString(body.parentProductId);
   const isBestSeller = toBoolean(body.isBestSeller, false);
   const isFeatured = toBoolean(body.isFeatured, false);
   const isActive = toBoolean(body.isActive, true);
 
-  if (!name || !description || !image || !categoryId || !slug) {
+  if (!name || !description || !image || !categoryId || !slug || !modelNo) {
     return badRequest(
-      "name, description, image, categoryId and slug (or valid name) are required",
+      "name, description, image, categoryId, slug (or valid name), and modelNo are required",
     );
   }
 
@@ -107,6 +133,16 @@ export async function POST(request: Request) {
 
   if (!category) {
     return badRequest("Invalid categoryId");
+  }
+
+  if (parentProductId) {
+    const parent = await db.query.products.findFirst({
+      where: eq(products.id, parentProductId),
+      columns: { id: true },
+    });
+    if (!parent) {
+      return badRequest("Invalid parentProductId");
+    }
   }
 
   if (collectionIds.length > 0) {
@@ -126,17 +162,28 @@ export async function POST(request: Request) {
         .insert(products)
         .values({
           name,
+          modelNo,
           slug,
           description,
+          detailedDescription,
+          productDetailHtml,
+          seoUrl,
+          seoTitle,
+          seoDescription,
+          seoKeywords,
+          googleShoppingDescription,
           image,
           imagePublicId,
+          purchasePrice: purchasePrice.toFixed(2),
           price: price.toFixed(2),
           stock,
           tag,
           notes,
+          scentOptions,
           isBestSeller,
           isFeatured,
           isActive,
+          parentProductId,
           categoryId,
         })
         .returning({ id: products.id });
@@ -168,7 +215,7 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     if (isUniqueConstraintError(error)) {
-      return badRequest("A product with this slug already exists");
+      return badRequest("A product with this slug or model number already exists");
     }
 
     throw error;
@@ -192,22 +239,34 @@ async function findAdminProductById(id: string) {
 function serializeProduct(product: ProductWithRelations) {
   return {
     id: product.id,
+    modelNo: product.modelNo,
     name: product.name,
     slug: product.slug,
     image: product.image,
+    description: product.description,
+    detailedDescription: product.detailedDescription,
+    productDetailHtml: product.productDetailHtml,
+    seoUrl: product.seoUrl,
+    seoTitle: product.seoTitle,
+    seoDescription: product.seoDescription,
+    seoKeywords: product.seoKeywords,
+    googleShoppingDescription: product.googleShoppingDescription,
+    purchasePrice: Number(product.purchasePrice),
     price: Number(product.price),
     stock: product.stock,
     tag: product.tag,
     notes: product.notes,
+    scentOptions: product.scentOptions,
     isBestSeller: product.isBestSeller,
     isFeatured: product.isFeatured,
     isActive: product.isActive,
+    parentProductId: product.parentProductId,
     category: {
       id: product.category.id,
       name: product.category.name,
       slug: product.category.slug,
     },
-    collections: product.collections.map((item) => ({
+    collections: product.collections.map((item: { collection: { id: string; name: string; slug: string } }) => ({
       id: item.collection.id,
       name: item.collection.name,
       slug: item.collection.slug,
@@ -215,6 +274,74 @@ function serializeProduct(product: ProductWithRelations) {
     createdAt: product.createdAt.toISOString(),
     updatedAt: product.updatedAt.toISOString(),
   };
+}
+
+function normalizeSeoUrl(rawSeoUrl: unknown, slug: string | null) {
+  const source = toNonEmptyString(rawSeoUrl);
+
+  if (!source) {
+    return slug ? `/products/${slug}` : null;
+  }
+
+  if (/^https?:\/\//i.test(source)) {
+    return source;
+  }
+
+  const path = source.startsWith("/") ? source : `/${source}`;
+
+  return path.replace(/\/+/g, "/");
+}
+
+function buildSeoTitle(name: string | null) {
+  return name ? `${name} Perfume | Scentora` : null;
+}
+
+function buildSeoDescription(
+  name: string | null,
+  description: string | null,
+  notes: string[],
+) {
+  if (!name || !description) {
+    return null;
+  }
+
+  const noteText = notes.length > 0 ? ` Notes include ${notes.join(", ")}.` : "";
+
+  return `${description}${noteText} Shop ${name} perfume online from Scentora with premium fragrance presentation.`;
+}
+
+function buildGoogleShoppingDescription(
+  name: string | null,
+  description: string | null,
+  notes: string[],
+) {
+  if (!name || !description) {
+    return null;
+  }
+
+  const noteText = notes.length > 0 ? ` Fragrance notes: ${notes.join(", ")}.` : "";
+
+  return `${name} by Scentora. ${description}${noteText} Premium perfume for daily wear, gifting, and special occasions.`;
+}
+
+function normalizeModelNo(rawModelNo: unknown, slug: string | null) {
+  const source = toNonEmptyString(rawModelNo);
+
+  if (source) {
+    const normalized = source
+      .toUpperCase()
+      .replace(/[^A-Z0-9-]/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
+
+    return normalized.length > 0 ? normalized : null;
+  }
+
+  if (!slug) {
+    return null;
+  }
+
+  return `SCT-${slug.toUpperCase().replace(/[^A-Z0-9]+/g, "-")}`;
 }
 
 function toNonEmptyString(value: unknown) {

@@ -1,5 +1,6 @@
 import { findProductByIdOrSlug } from "@/lib/api/catalog";
 import { notFound, ok } from "@/lib/api/http";
+import { secureAdminApi } from "@/lib/api/secure";
 
 type RouteContext = {
   params: Promise<{
@@ -7,7 +8,10 @@ type RouteContext = {
   }>;
 };
 
-export async function GET(_request: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
+  const secured = await secureAdminApi(request, { id: "product" });
+  if (secured) return secured;
+
   const { id } = await context.params;
   const product = await findProductByIdOrSlug(id);
 

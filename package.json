@@ -7,6 +7,7 @@
     "build": "node scripts/build.mjs",
     "start": "next start",
     "lint": "eslint",
+    "bones:build": "boneyard-js build --out ./bones",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
@@ -14,18 +15,21 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.4.2",
+    "boneyard-js": "^1.8.1",
     "cloudinary": "^2.10.0",
     "country-state-city": "^3.2.1",
     "drizzle-orm": "^0.45.2",
     "framer-motion": "^12.23.24",
     "libphonenumber-js": "^1.13.3",
     "lucide-react": "^0.548.0",
-    "next": "16.0.1",
+    "next": "16.2.6",
     "postgres": "^3.4.9",
-    "react": "19.2.0",
-    "react-dom": "19.2.0",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
     "swagger-ui-dist": "^5.32.5",
-    "swagger-ui-react": "^5.32.5"
+    "swagger-ui-react": "^5.32.5",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -35,7 +39,7 @@
     "baseline-browser-mapping": "^2.10.32",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
-    "eslint-config-next": "16.0.1",
+    "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",
     "tsx": "^4.22.0",
     "typescript": "^5"

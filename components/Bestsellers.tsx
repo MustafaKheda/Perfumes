@@ -1,6 +1,9 @@
 import ProductCard from "./ProductCard";
+import { getProducts } from "@/lib/api/catalog";
 
-export default function BestSellers() {
+export default async function BestSellers() {
+  const result = await getProducts({ bestSeller: "true", limit: "2" });
+
   return (
     <section aria-labelledby="best-sellers">
       <h2
@@ -11,16 +14,15 @@ export default function BestSellers() {
       </h2>
 
       <div className="grid gap-6 sm:grid-cols-2 max-w-[550px]">
-        <ProductCard
-          img="/images/Perfume/30.webp"
-          title="Premium Men Scent"
-          price="$50.00"
-        />
-        <ProductCard
-          img="/images/Perfume/34.webp"
-          title="Premium Men Scent"
-          price="$50.00"
-        />
+        {result.data.map((product) => (
+          <ProductCard
+            key={product.id}
+            img={product.image}
+            title={product.name}
+            price={`$${product.price.toFixed(2)}`}
+            productId={product.id}
+          />
+        ))}
       </div>
     </section>
   );

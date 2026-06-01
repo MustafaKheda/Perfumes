@@ -17,6 +17,7 @@ type CartItem = {
   image: string;
   price: number;
   quantity: number;
+  scentOption?: string | null;
 };
 
 type CartResponse = {
@@ -48,7 +49,7 @@ export default function CartView() {
         setGuestMode(true);
         setItems(
           getGuestCart().map((item) => ({
-            id: `guest-${item.productId}`,
+            id: `guest-${item.productId}-${item.scentOption ?? "default"}`,
             ...item,
           })),
         );
@@ -64,9 +65,9 @@ export default function CartView() {
   }, []);
 
   const syncQuantity = useCallback(
-    (productId: string, quantity: number) => {
+    (productId: string, quantity: number, scentOption = "") => {
       if (guestMode) {
-        updateGuestCartItem(productId, quantity);
+        updateGuestCartItem(productId, quantity, scentOption);
         return;
       }
 
@@ -77,7 +78,7 @@ export default function CartView() {
           const response = await fetch("/api/cart", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ productId, quantity }),
+            body: JSON.stringify({ productId, quantity, scentOption }),
           });
 
           if (!response.ok) {
@@ -96,22 +97,24 @@ export default function CartView() {
     [guestMode, loadCart],
   );
 
-  function updateQuantity(productId: string, quantity: number) {
+  function updateQuantity(productId: string, quantity: number, scentOption = "") {
     if (quantity < 1) {
       return;
     }
 
     setItems((currentItems) =>
       currentItems.map((item) =>
-        item.productId === productId ? { ...item, quantity } : item,
+        item.productId === productId && (item.scentOption ?? "") === scentOption
+          ? { ...item, quantity }
+          : item,
       ),
     );
-    syncQuantity(productId, quantity);
+    syncQuantity(productId, quantity, scentOption);
   }
 
-  async function removeItem(productId: string) {
+  async function removeItem(productId: string, scentOption = "") {
     if (guestMode) {
-      removeGuestCartItem(productId);
+      removeGuestCartItem(productId, scentOption);
       await loadCart();
       return;
     }
@@ -122,7 +125,7 @@ export default function CartView() {
     const response = await fetch("/api/cart", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ productId }),
+      body: JSON.stringify({ productId, scentOption }),
     });
 
     if (response.ok) {
@@ -192,10 +195,21 @@ export default function CartView() {
                     <p className="mt-1 text-sm text-textSecondary">
                       ${item.price.toFixed(2)}
                     </p>
+                    {item.scentOption ? (
+                      <p className="mt-1 text-sm font-semibold text-textPrimary">
+                        Smell: {item.scentOption}
+                      </p>
+                    ) : null}
                     <div className="mt-4 flex w-fit items-center rounded-lg border border-black/15">
                       <button
                         aria-label="Decrease quantity"
-                        onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                        onClick={() =>
+                          updateQuantity(
+                            item.productId,
+                            item.quantity - 1,
+                            item.scentOption ?? "",
+                          )
+                        }
                         className="grid h-10 w-10 place-items-center hover:bg-black/5"
                       >
                         <Minus className="h-4 w-4" aria-hidden="true" />
@@ -205,7 +219,13 @@ export default function CartView() {
                       </span>
                       <button
                         aria-label="Increase quantity"
-                        onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                        onClick={() =>
+                          updateQuantity(
+                            item.productId,
+                            item.quantity + 1,
+                            item.scentOption ?? "",
+                          )
+                        }
                         className="grid h-10 w-10 place-items-center hover:bg-black/5"
                       >
                         <Plus className="h-4 w-4" aria-hidden="true" />
@@ -214,7 +234,7 @@ export default function CartView() {
                   </div>
                   <button
                     aria-label={`Remove ${item.name}`}
-                    onClick={() => removeItem(item.productId)}
+                    onClick={() => removeItem(item.productId, item.scentOption ?? "")}
                     className="grid h-10 w-10 place-items-center rounded-lg border border-black/10 text-textSecondary hover:bg-red-50 hover:text-red-700"
                   >
                     <Trash2 className="h-4 w-4" aria-hidden="true" />

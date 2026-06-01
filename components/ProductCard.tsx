@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { Heart, ShoppingBag } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { addGuestCartItem } from "@/lib/guest-cart";
 import {
     addGuestWishlistItem,
@@ -19,14 +19,10 @@ type Props = {
 
 export default function ProductCard({ img, title, price, productId }: Props) {
   const [adding, setAdding] = useState(false);
-  const [wishlistActive, setWishlistActive] = useState(false);
+  const [wishlistActive, setWishlistActive] = useState(() =>
+    productId ? isGuestWishlisted(productId) : false,
+  );
   const [updatingWishlist, setUpdatingWishlist] = useState(false);
-
-  useEffect(() => {
-    if (productId && isGuestWishlisted(productId)) {
-      setWishlistActive(true);
-    }
-  }, [productId]);
 
   async function addToCart() {
     if (!productId) return;

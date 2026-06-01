@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { and, eq, sql } from "drizzle-orm";
 import { badRequest, unauthorized } from "@/lib/api/http";
+import { rateLimitOrResponse } from "@/lib/api/rate-limit";
 import { db } from "@/lib/db";
 import { cartItems, products } from "@/lib/db/schema";
 import { requireCustomerUser } from "@/lib/user-auth";
@@ -8,9 +9,13 @@ import { requireCustomerUser } from "@/lib/user-auth";
 type CartBody = {
   productId?: unknown;
   quantity?: unknown;
+  scentOption?: unknown;
 };
 
-export async function GET() {
+export async function GET(request: Request) {
+  const limited = rateLimitOrResponse(request, { id: "cart:get", limit: 60, windowMs: 60_000 });
+  if (limited) return limited;
+
   const user = await requireCustomerUser();
 
   if (!user) {
@@ -25,6 +30,7 @@ export async function GET() {
       image: products.image,
       price: products.price,
       quantity: cartItems.quantity,
+      scentOption: cartItems.scentOption,
     })
     .from(cartItems)
     .innerJoin(products, eq(cartItems.productId, products.id))
@@ -49,6 +55,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const limited = rateLimitOrResponse(request, { id: "cart:post", limit: 30, windowMs: 60_000 });
+  if (limited) return limited;
+
   const user = await requireCustomerUser();
 
   if (!user) {
@@ -58,6 +67,7 @@ export async function POST(request: Request) {
   const body = await readCartBody(request);
   const productId = typeof body.productId === "string" ? body.productId : "";
   const quantity = normalizeQuantity(body.quantity, 1);
+  const scentOption = normalizeScentOption(body.scentOption);
 
   if (!productId) {
     return badRequest("Product is required");
@@ -77,20 +87,25 @@ export async function POST(request: Request) {
     .values({
       userId: user.id,
       productId,
+      scentOption,
       quantity,
     })
     .onConflictDoUpdate({
-      target: [cartItems.userId, cartItems.productId],
+      target: [cartItems.userId, cartItems.productId, cartItems.scentOption],
       set: {
         quantity: sql`${cartItems.quantity} + ${quantity}`,
+        scentOption,
         updatedAt: new Date(),
       },
     });
 
-  return GET();
+  return GET(request);
 }
 
 export async function PATCH(request: Request) {
+  const limited = rateLimitOrResponse(request, { id: "cart:patch", limit: 30, windowMs: 60_000 });
+  if (limited) return limited;
+
   const user = await requireCustomerUser();
 
   if (!user) {
@@ -100,6 +115,7 @@ export async function PATCH(request: Request) {
   const body = await readCartBody(request);
   const productId = typeof body.productId === "string" ? body.productId : "";
   const quantity = normalizeQuantity(body.quantity, 1);
+  const scentOption = normalizeScentOption(body.scentOption);
 
   if (!productId) {
     return badRequest("Product is required");
@@ -111,12 +127,21 @@ export async function PATCH(request: Request) {
       quantity,
       updatedAt: new Date(),
     })
-    .where(and(eq(cartItems.userId, user.id), eq(cartItems.productId, productId)));
+    .where(
+      and(
+        eq(cartItems.userId, user.id),
+        eq(cartItems.productId, productId),
+        eq(cartItems.scentOption, scentOption),
+      ),
+    );
 
-  return GET();
+  return GET(request);
 }
 
 export async function DELETE(request: Request) {
+  const limited = rateLimitOrResponse(request, { id: "cart:delete", limit: 30, windowMs: 60_000 });
+  if (limited) return limited;
+
   const user = await requireCustomerUser();
 
   if (!user) {
@@ -125,6 +150,7 @@ export async function DELETE(request: Request) {
 
   const body = await readCartBody(request);
   const productId = typeof body.productId === "string" ? body.productId : "";
+  const scentOption = normalizeScentOption(body.scentOption);
 
   if (!productId) {
     return badRequest("Product is required");
@@ -132,9 +158,24 @@ export async function DELETE(request: Request) {
 
   await db
     .delete(cartItems)
-    .where(and(eq(cartItems.userId, user.id), eq(cartItems.productId, productId)));
+    .where(
+      and(
+        eq(cartItems.userId, user.id),
+        eq(cartItems.productId, productId),
+        eq(cartItems.scentOption, scentOption),
+      ),
+    );
 
-  return GET();
+  return GET(request);
+}
+
+function normalizeScentOption(value: unknown) {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  const trimmed = value.trim();
+  return trimmed;
 }
 
 async function readCartBody(request: Request): Promise<CartBody> {

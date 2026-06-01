@@ -18,6 +18,13 @@ type SendOrderStatusEmailInput = {
   note: string;
 };
 
+type SendInvoiceEmailInput = {
+  to: string;
+  customerName: string | null;
+  orderId: string;
+  html: string;
+};
+
 export async function sendVerificationEmail({
   to,
   name,
@@ -134,6 +141,46 @@ export async function sendOrderStatusEmail({
 
   if (!response.ok) {
     throw new Error("Unable to send order status email");
+  }
+
+  return { sent: true, provider: "resend" as const };
+}
+
+export async function sendInvoiceEmail({
+  to,
+  customerName,
+  orderId,
+  html,
+}: SendInvoiceEmailInput) {
+  const subject = `Invoice for your Scentora order ${shortOrderId(orderId)}`;
+
+  if (!process.env.RESEND_API_KEY) {
+    console.log(`[dev] ${subject} to ${to}`);
+    return { sent: false, provider: "console" as const };
+  }
+
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: process.env.AUTH_EMAIL_FROM || "Scentora <onboarding@resend.dev>",
+      to,
+      subject,
+      html: `
+        <div style="font-family: Arial, sans-serif; color: #1a1a1a;">
+          <p>Hello ${escapeHtml(customerName || "there")},</p>
+          <p>Here is your invoice:</p>
+        </div>
+        ${html}
+      `,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Unable to send invoice email");
   }
 
   return { sent: true, provider: "resend" as const };

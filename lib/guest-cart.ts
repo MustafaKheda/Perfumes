@@ -4,6 +4,7 @@ export type GuestCartItem = {
   image: string;
   price: number;
   quantity: number;
+  scentOption?: string;
 };
 
 const GUEST_CART_KEY = "scentora:guest-cart";
@@ -28,7 +29,11 @@ export function getGuestCart() {
 
 export function addGuestCartItem(item: GuestCartItem) {
   const cart = getGuestCart();
-  const existing = cart.find((cartItem) => cartItem.productId === item.productId);
+  const existing = cart.find(
+    (cartItem) =>
+      cartItem.productId === item.productId &&
+      (cartItem.scentOption ?? "") === (item.scentOption ?? ""),
+  );
 
   if (existing) {
     existing.quantity = clampQuantity(existing.quantity + item.quantity);
@@ -43,10 +48,10 @@ export function addGuestCartItem(item: GuestCartItem) {
   notifyGuestCartUpdated();
 }
 
-export function updateGuestCartItem(productId: string, quantity: number) {
+export function updateGuestCartItem(productId: string, quantity: number, scentOption = "") {
   const cart = getGuestCart()
     .map((item) =>
-      item.productId === productId
+      item.productId === productId && (item.scentOption ?? "") === scentOption
         ? { ...item, quantity: clampQuantity(quantity) }
         : item,
     )
@@ -56,8 +61,13 @@ export function updateGuestCartItem(productId: string, quantity: number) {
   notifyGuestCartUpdated();
 }
 
-export function removeGuestCartItem(productId: string) {
-  saveGuestCart(getGuestCart().filter((item) => item.productId !== productId));
+export function removeGuestCartItem(productId: string, scentOption = "") {
+  saveGuestCart(
+    getGuestCart().filter(
+      (item) =>
+        item.productId !== productId || (item.scentOption ?? "") !== scentOption,
+    ),
+  );
   notifyGuestCartUpdated();
 }
 
@@ -101,6 +111,7 @@ function isGuestCartItem(value: unknown): value is GuestCartItem {
     typeof item.name === "string" &&
     typeof item.image === "string" &&
     typeof item.price === "number" &&
-    typeof item.quantity === "number"
+    typeof item.quantity === "number" &&
+    (typeof item.scentOption === "undefined" || typeof item.scentOption === "string")
   );
 }

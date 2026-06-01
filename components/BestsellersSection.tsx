@@ -1,18 +1,17 @@
 import CommonLink from "./common/CommonLink";
-import PerfumeCard from "./common/PerfumeCard";
+import ProductCard from "./ProductCardLarge";
+import ProductCarousel from "./ProductCarousel";
 import SectionHeading from "./SectionHeading";
+import { getProducts } from "@/lib/api/catalog";
+import { getWishlistProductIdSet } from "@/lib/api/wishlist";
 
-const perfumes = [
-    { image: "/images/Perfume/1.webp", name: "Premium Men Scent", notes: "Oud, Bergamot, Amber", price: "$50.00", productId: "1" },
-    { image: "/images/Perfume/2.webp", name: "Premium Men Scent", notes: "Oud, Bergamot, Amber", price: "$50.00", productId: "2" },
-    { image: "/images/Perfume/3.webp", name: "Premium Men Scent", notes: "Oud, Bergamot, Amber", price: "$50.00", productId: "3" },
-    { image: "/images/Perfume/18.webp", name: "Premium Men Scent", notes: "Oud, Bergamot, Amber", price: "$50.00", productId: "4" },
-    { image: "/images/Perfume/15.webp", name: "Premium Men Scent", notes: "Oud, Bergamot, Amber", price: "$50.00", productId: "5" },
-    { image: "/images/Perfume/9.webp", name: "Premium Men Scent", notes: "Oud, Bergamot, Amber", price: "$50.00", productId: "6" },
+export default async function BestSellersSection() {
+    const [result, wishlistProductIds] = await Promise.all([
+        getProducts({ bestSeller: "true", limit: "6" }),
+        getWishlistProductIdSet(),
+    ]);
+    const products = result.data;
 
-];
-
-export default function BestSellersSection() {
     return (
         <section className="text-center">
 
@@ -24,13 +23,27 @@ export default function BestSellersSection() {
             />
 
 
-            <div className="mt-10 flex-1 grid sm:grid-cols-2 lg:grid-cols-3 gap-6 ">
-                {perfumes.map((p, i) => (
-                    <PerfumeCard key={i} {...p} />
+            <ProductCarousel
+                showControls={products.length > 4}
+                className="mt-10 text-left"
+            >
+                {products.map((p) => (
+                    <ProductCard
+                        key={p.id}
+                        productId={p.id}
+                        image={p.image}
+                        name={p.name}
+                        slug={p.slug}
+                        notes={p.notes.join(", ")}
+                        price={p.price.toFixed(2)}
+                        tag={p.tag ?? undefined}
+                        category={p.category}
+                        isWishlisted={wishlistProductIds.has(p.id)}
+                    />
                 ))}
-            </div>
+            </ProductCarousel>
 
-            <CommonLink href="/shop/all" inverse className="mt-5" >
+            <CommonLink href="/best-sellers" inverse className="mt-5" >
                 View All
             </CommonLink>
         </section>

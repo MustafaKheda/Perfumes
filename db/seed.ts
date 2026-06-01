@@ -98,6 +98,7 @@ const collectionSeeds = [
 
 const productSeeds = [
   {
+    modelNo: "SCT-001",
     slug: "noir-mystique",
     image: "/images/Perfume/1.webp",
     name: "Noir Mystique",
@@ -112,6 +113,7 @@ const productSeeds = [
     isFeatured: true,
   },
   {
+    modelNo: "SCT-002",
     slug: "velvet-bloom",
     image: "/images/Perfume/2.webp",
     name: "Velvet Bloom",
@@ -126,6 +128,7 @@ const productSeeds = [
     isFeatured: true,
   },
   {
+    modelNo: "SCT-003",
     slug: "amber-dusk",
     image: "/images/Perfume/9.webp",
     name: "Amber Dusk",
@@ -140,6 +143,7 @@ const productSeeds = [
     isFeatured: true,
   },
   {
+    modelNo: "SCT-004",
     slug: "cedar-amber",
     image: "/images/Perfume/31.webp",
     name: "Cedar Amber",
@@ -154,6 +158,7 @@ const productSeeds = [
     isFeatured: false,
   },
   {
+    modelNo: "SCT-005",
     slug: "saffron-mist",
     image: "/images/Perfume/35.webp",
     name: "Saffron Mist",
@@ -168,6 +173,7 @@ const productSeeds = [
     isFeatured: false,
   },
   {
+    modelNo: "SCT-006",
     slug: "oud-ember",
     image: "/images/Perfume/18.webp",
     name: "Oud Ember",
@@ -182,6 +188,7 @@ const productSeeds = [
     isFeatured: false,
   },
   {
+    modelNo: "SCT-007",
     slug: "rose-velour",
     image: "/images/Perfume/30.webp",
     name: "Rose Velour",
@@ -196,6 +203,7 @@ const productSeeds = [
     isFeatured: true,
   },
   {
+    modelNo: "SCT-008",
     slug: "floral-noir",
     image: "/images/Perfume/7.webp",
     name: "Floral Noir",
@@ -210,6 +218,7 @@ const productSeeds = [
     isFeatured: false,
   },
   {
+    modelNo: "SCT-009",
     slug: "golden-noir",
     image: "/images/Perfume/37.webp",
     name: "Golden Noir",
@@ -224,6 +233,7 @@ const productSeeds = [
     isFeatured: true,
   },
   {
+    modelNo: "SCT-010",
     slug: "musk-bloom",
     image: "/images/Perfume/32.webp",
     name: "Musk Bloom",
@@ -238,6 +248,7 @@ const productSeeds = [
     isFeatured: false,
   },
   {
+    modelNo: "SCT-011",
     slug: "midnight-amber",
     image: "/images/Perfume/20.webp",
     name: "Midnight Amber",
@@ -251,8 +262,297 @@ const productSeeds = [
     isBestSeller: true,
     isFeatured: false,
   },
+  {
+    modelNo: "SCT-012",
+    slug: "inferno-spice",
+    image: "/images/Perfume/33.jpg",
+    name: "Inferno Spice",
+    description:
+      "A bold spicy profile with clove and saffron over smoky vetiver woods.",
+    notes: ["Clove", "Saffron", "Vetiver"],
+    price: "129.00",
+    tag: "HOT",
+    categorySlug: "men",
+    collectionSlugs: ["men", "luxury"],
+    stock: 22,
+    isBestSeller: true,
+    isFeatured: true,
+  },
+  {
+    modelNo: "SCT-013",
+    slug: "marine-adventure",
+    image: "/images/Perfume/34.webp",
+    name: "Marine Adventure",
+    description:
+      "Fresh citrus and aromatic saffron layered on clean musk and moss.",
+    notes: ["Citrus", "Saffron", "Musk"],
+    price: "105.00",
+    tag: "NEW",
+    categorySlug: "unisex",
+    collectionSlugs: ["unisex", "all"],
+    stock: 26,
+    isBestSeller: false,
+    isFeatured: true,
+  },
+  {
+    modelNo: "SCT-014",
+    slug: "twin-paradise",
+    image: "/images/Perfume/18.webp",
+    name: "Twin Paradise",
+    description:
+      "Tropical floral accord with orange blossom and creamy sandalwood vanilla.",
+    notes: ["Orange Blossom", "Tuberose", "Sandalwood"],
+    price: "149.00",
+    tag: "POPULAR",
+    categorySlug: "women",
+    collectionSlugs: ["women", "luxury"],
+    stock: 20,
+    isBestSeller: true,
+    isFeatured: true,
+  },
+  {
+    modelNo: "SCT-015",
+    slug: "french-vanilla-reserve",
+    image: "/images/Perfume/30.webp",
+    name: "French Vanilla Reserve",
+    description:
+      "A warm aromatic blend of vanilla, musk, and dry woods with spiced lift.",
+    notes: ["Vanilla", "Musk", "Dry Woods"],
+    price: "119.00",
+    tag: "POPULAR",
+    categorySlug: "unisex",
+    collectionSlugs: ["unisex", "luxury"],
+    stock: 29,
+    isBestSeller: true,
+    isFeatured: false,
+  },
+  {
+    modelNo: "SCT-016",
+    slug: "magnolia-silk",
+    image: "/images/Perfume/35.webp",
+    name: "Magnolia Silk",
+    description:
+      "Soft floral elegance built around jasmine and lily of the valley.",
+    notes: ["Lily of the Valley", "Jasmine", "Musk"],
+    price: "125.00",
+    tag: "NEW",
+    categorySlug: "women",
+    collectionSlugs: ["women", "all"],
+    stock: 24,
+    isBestSeller: false,
+    isFeatured: true,
+  },
+  {
+    modelNo: "SCT-017",
+    slug: "nicolai-leather",
+    image: "/images/Perfume/37.webp",
+    name: "Nicolai Leather",
+    description:
+      "Refined leather and osmanthus with a woody musky dry down.",
+    notes: ["Osmanthus", "Leather", "Woods"],
+    price: "159.00",
+    tag: "LUXURY",
+    categorySlug: "unisex",
+    collectionSlugs: ["unisex", "luxury"],
+    stock: 17,
+    isBestSeller: false,
+    isFeatured: true,
+  },
+  {
+    modelNo: "SCT-018",
+    slug: "torando-chypre",
+    image: "/images/Perfume/31.webp",
+    name: "Torando Chypre",
+    description:
+      "Vibrant fruit opening with patchouli and oakmoss for a modern chypre trail.",
+    notes: ["Grapefruit", "Patchouli", "Oakmoss"],
+    price: "139.00",
+    tag: "HOT",
+    categorySlug: "unisex",
+    collectionSlugs: ["unisex", "all"],
+    stock: 23,
+    isBestSeller: true,
+    isFeatured: false,
+  },
+  {
+    modelNo: "SCT-019",
+    slug: "aura-amber",
+    image: "/images/Perfume/20.webp",
+    name: "Aura Amber",
+    description:
+      "Bright bergamot opening with powdery heart and amber sandalwood base.",
+    notes: ["Bergamot", "Orris", "Sandalwood"],
+    price: "128.00",
+    tag: "POPULAR",
+    categorySlug: "men",
+    collectionSlugs: ["men", "all"],
+    stock: 27,
+    isBestSeller: true,
+    isFeatured: true,
+  },
+  {
+    modelNo: "SCT-020",
+    slug: "divine-blush",
+    image: "/images/Perfume/32.webp",
+    name: "Divine Blush",
+    description:
+      "A floral-musky signature with jasmine, rose, and pink pepper sparkle.",
+    notes: ["Jasmine", "Rose", "Pink Pepper"],
+    price: "145.00",
+    tag: "LUXURY",
+    categorySlug: "women",
+    collectionSlugs: ["women", "luxury"],
+    stock: 18,
+    isBestSeller: false,
+    isFeatured: true,
+  },
+  {
+    modelNo: "SCT-012-A",
+    parentModelNo: "SCT-012",
+    slug: "inferno-spice-clove",
+    image: "/images/Perfume/33.jpg",
+    name: "Inferno Spice - Clove",
+    description: "Spicier clove-forward take on Inferno Spice with saffron warmth.",
+    notes: ["Clove", "Saffron", "Elemi"],
+    price: "129.00",
+    tag: "HOT",
+    categorySlug: "men",
+    collectionSlugs: ["men", "luxury"],
+    stock: 14,
+    isBestSeller: false,
+    isFeatured: false,
+  },
+  {
+    modelNo: "SCT-013-A",
+    parentModelNo: "SCT-013",
+    slug: "marine-adventure-citrus",
+    image: "/images/Perfume/34.webp",
+    name: "Marine Adventure - Citrus",
+    description: "Brighter citrus-led variant with crisp marine freshness.",
+    notes: ["Citrus", "Benzoin", "Moss"],
+    price: "105.00",
+    tag: "NEW",
+    categorySlug: "unisex",
+    collectionSlugs: ["unisex", "all"],
+    stock: 16,
+    isBestSeller: false,
+    isFeatured: false,
+  },
+  {
+    modelNo: "SCT-014-A",
+    parentModelNo: "SCT-014",
+    slug: "twin-paradise-tuberose",
+    image: "/images/Perfume/18.webp",
+    name: "Twin Paradise - Tuberose",
+    description: "A creamy floral profile with extra tuberose and sandalwood depth.",
+    notes: ["Tuberose", "Jasmine", "Sandalwood"],
+    price: "149.00",
+    tag: "POPULAR",
+    categorySlug: "women",
+    collectionSlugs: ["women", "luxury"],
+    stock: 12,
+    isBestSeller: false,
+    isFeatured: false,
+  },
+  {
+    modelNo: "SCT-015-A",
+    parentModelNo: "SCT-015",
+    slug: "french-vanilla-tobacco",
+    image: "/images/Perfume/30.webp",
+    name: "French Vanilla Reserve - Tobacco",
+    description: "Warmer vanilla profile with dry woods and soft tobacco nuance.",
+    notes: ["Vanilla", "Tobacco", "Dry Woods"],
+    price: "119.00",
+    tag: "POPULAR",
+    categorySlug: "unisex",
+    collectionSlugs: ["unisex", "luxury"],
+    stock: 15,
+    isBestSeller: false,
+    isFeatured: false,
+  },
+  {
+    modelNo: "SCT-016-A",
+    parentModelNo: "SCT-016",
+    slug: "magnolia-silk-jasmine",
+    image: "/images/Perfume/35.webp",
+    name: "Magnolia Silk - Jasmine",
+    description: "Romantic jasmine-centric variant with velvety floral softness.",
+    notes: ["Jasmine", "Lily of the Valley", "Musk"],
+    price: "125.00",
+    tag: "NEW",
+    categorySlug: "women",
+    collectionSlugs: ["women", "all"],
+    stock: 13,
+    isBestSeller: false,
+    isFeatured: false,
+  },
+  {
+    modelNo: "SCT-017-A",
+    parentModelNo: "SCT-017",
+    slug: "nicolai-leather-woods",
+    image: "/images/Perfume/37.webp",
+    name: "Nicolai Leather - Woods",
+    description: "Wood-heavy leather expression with musky trail and soft fruit facets.",
+    notes: ["Leather", "Woods", "Musk"],
+    price: "159.00",
+    tag: "LUXURY",
+    categorySlug: "unisex",
+    collectionSlugs: ["unisex", "luxury"],
+    stock: 10,
+    isBestSeller: false,
+    isFeatured: false,
+  },
+  {
+    modelNo: "SCT-018-A",
+    parentModelNo: "SCT-018",
+    slug: "torando-chypre-oakmoss",
+    image: "/images/Perfume/31.webp",
+    name: "Torando Chypre - Oakmoss",
+    description: "Deeper chypre variant with strong oakmoss and patchouli character.",
+    notes: ["Oakmoss", "Patchouli", "Cedar"],
+    price: "139.00",
+    tag: "HOT",
+    categorySlug: "unisex",
+    collectionSlugs: ["unisex", "all"],
+    stock: 12,
+    isBestSeller: false,
+    isFeatured: false,
+  },
+  {
+    modelNo: "SCT-019-A",
+    parentModelNo: "SCT-019",
+    slug: "aura-amber-orris",
+    image: "/images/Perfume/20.webp",
+    name: "Aura Amber - Orris",
+    description: "Powdery orris-focused take on Aura Amber with elegant woody dry-down.",
+    notes: ["Orris", "Amber", "Sandalwood"],
+    price: "128.00",
+    tag: "POPULAR",
+    categorySlug: "men",
+    collectionSlugs: ["men", "all"],
+    stock: 15,
+    isBestSeller: false,
+    isFeatured: false,
+  },
+  {
+    modelNo: "SCT-020-A",
+    parentModelNo: "SCT-020",
+    slug: "divine-blush-rose",
+    image: "/images/Perfume/32.webp",
+    name: "Divine Blush - Rose",
+    description: "Rose-forward variant with delicate jasmine and soft musky finish.",
+    notes: ["Rose", "Jasmine", "Musk"],
+    price: "145.00",
+    tag: "LUXURY",
+    categorySlug: "women",
+    collectionSlugs: ["women", "luxury"],
+    stock: 11,
+    isBestSeller: false,
+    isFeatured: false,
+  },
 ] satisfies Array<{
   slug: string;
+  modelNo: string;
   image: string;
   name: string;
   description: string;
@@ -261,6 +561,7 @@ const productSeeds = [
   tag: ProductTag;
   categorySlug: string;
   collectionSlugs: string[];
+  parentModelNo?: string;
   stock: number;
   isBestSeller: boolean;
   isFeatured: boolean;
@@ -271,6 +572,7 @@ async function main() {
   const { db, sqlClient } = await import("@/lib/db");
   const categoryBySlug = new Map<string, string>();
   const collectionBySlug = new Map<string, string>();
+  const productIdByModelNo = new Map<string, string>();
 
   try {
     for (const category of categorySeeds) {
@@ -321,8 +623,18 @@ async function main() {
         .insert(products)
         .values({
           name: product.name,
+          modelNo: product.modelNo,
           slug: product.slug,
           description: product.description,
+          seoUrl: `/products/${product.slug}`,
+          seoTitle: buildSeoTitle(product.name),
+          seoDescription: buildSeoDescription(product.name, product.description, product.notes),
+          seoKeywords: buildSeoKeywords(product),
+          googleShoppingDescription: buildGoogleShoppingDescription(
+            product.name,
+            product.description,
+            product.notes,
+          ),
           image: product.image,
           price: product.price,
           tag: product.tag,
@@ -331,13 +643,30 @@ async function main() {
           isBestSeller: product.isBestSeller,
           isFeatured: product.isFeatured,
           isActive: true,
+          parentProductId: product.parentModelNo
+            ? productIdByModelNo.get(product.parentModelNo) ?? null
+            : null,
           categoryId,
         })
         .onConflictDoUpdate({
           target: products.slug,
           set: {
             name: product.name,
+            modelNo: product.modelNo,
             description: product.description,
+            seoUrl: `/products/${product.slug}`,
+            seoTitle: buildSeoTitle(product.name),
+            seoDescription: buildSeoDescription(
+              product.name,
+              product.description,
+              product.notes,
+            ),
+            seoKeywords: buildSeoKeywords(product),
+            googleShoppingDescription: buildGoogleShoppingDescription(
+              product.name,
+              product.description,
+              product.notes,
+            ),
             image: product.image,
             price: product.price,
             tag: product.tag,
@@ -346,11 +675,15 @@ async function main() {
             isBestSeller: product.isBestSeller,
             isFeatured: product.isFeatured,
             isActive: true,
+            parentProductId: product.parentModelNo
+              ? productIdByModelNo.get(product.parentModelNo) ?? null
+              : null,
             categoryId,
             updatedAt: new Date(),
           },
         })
         .returning({ id: products.id });
+      productIdByModelNo.set(product.modelNo, row.id);
 
       await db
         .delete(productCollections)
@@ -404,6 +737,34 @@ function hashPassword(password: string) {
   const key = scryptSync(password, salt, 64).toString("base64url");
 
   return `scrypt:${salt}:${key}`;
+}
+
+function buildSeoTitle(name: string) {
+  return `${name} Perfume | Scentora`;
+}
+
+function buildSeoDescription(name: string, description: string, notes: string[]) {
+  return `${description} Notes include ${notes.join(", ")}. Shop ${name} perfume online from Scentora with premium fragrance presentation.`;
+}
+
+function buildSeoKeywords(product: (typeof productSeeds)[number]) {
+  return [
+    product.name,
+    product.modelNo,
+    "Scentora",
+    "perfume",
+    "fragrance",
+    `${product.categorySlug} perfume`,
+    ...product.notes,
+  ];
+}
+
+function buildGoogleShoppingDescription(
+  name: string,
+  description: string,
+  notes: string[],
+) {
+  return `${name} by Scentora. ${description} Fragrance notes: ${notes.join(", ")}. Premium perfume for daily wear, gifting, and special occasions.`;
 }
 
 function loadEnv() {

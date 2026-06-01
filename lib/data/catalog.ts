@@ -2,10 +2,16 @@ export type ProductTag = "HOT" | "NEW" | "POPULAR" | "LUXURY";
 
 export type Product = {
   id: string;
+  modelNo: string;
   slug: string;
   image: string;
   name: string;
   description: string;
+  seoUrl?: string;
+  seoTitle?: string;
+  seoDescription?: string;
+  seoKeywords?: string[];
+  googleShoppingDescription?: string;
   notes: string[];
   price: number;
   tag?: ProductTag;
@@ -126,6 +132,7 @@ export const collections: Collection[] = [
 export const products: Product[] = [
   {
     id: "prod_001",
+    modelNo: "SCT-001",
     slug: "noir-mystique",
     image: "/images/Perfume/1.webp",
     name: "Noir Mystique",
@@ -143,6 +150,7 @@ export const products: Product[] = [
   },
   {
     id: "prod_002",
+    modelNo: "SCT-002",
     slug: "velvet-bloom",
     image: "/images/Perfume/2.webp",
     name: "Velvet Bloom",
@@ -160,6 +168,7 @@ export const products: Product[] = [
   },
   {
     id: "prod_003",
+    modelNo: "SCT-003",
     slug: "amber-dusk",
     image: "/images/Perfume/9.webp",
     name: "Amber Dusk",
@@ -177,6 +186,7 @@ export const products: Product[] = [
   },
   {
     id: "prod_004",
+    modelNo: "SCT-004",
     slug: "cedar-amber",
     image: "/images/Perfume/31.webp",
     name: "Cedar Amber",
@@ -194,6 +204,7 @@ export const products: Product[] = [
   },
   {
     id: "prod_005",
+    modelNo: "SCT-005",
     slug: "saffron-mist",
     image: "/images/Perfume/35.webp",
     name: "Saffron Mist",
@@ -211,6 +222,7 @@ export const products: Product[] = [
   },
   {
     id: "prod_006",
+    modelNo: "SCT-006",
     slug: "oud-ember",
     image: "/images/Perfume/18.webp",
     name: "Oud Ember",
@@ -228,6 +240,7 @@ export const products: Product[] = [
   },
   {
     id: "prod_007",
+    modelNo: "SCT-007",
     slug: "rose-velour",
     image: "/images/Perfume/30.webp",
     name: "Rose Velour",
@@ -245,6 +258,7 @@ export const products: Product[] = [
   },
   {
     id: "prod_008",
+    modelNo: "SCT-008",
     slug: "floral-noir",
     image: "/images/Perfume/7.webp",
     name: "Floral Noir",
@@ -262,6 +276,7 @@ export const products: Product[] = [
   },
   {
     id: "prod_009",
+    modelNo: "SCT-009",
     slug: "golden-noir",
     image: "/images/Perfume/37.webp",
     name: "Golden Noir",
@@ -279,6 +294,7 @@ export const products: Product[] = [
   },
   {
     id: "prod_010",
+    modelNo: "SCT-010",
     slug: "musk-bloom",
     image: "/images/Perfume/32.webp",
     name: "Musk Bloom",
@@ -296,6 +312,7 @@ export const products: Product[] = [
   },
   {
     id: "prod_011",
+    modelNo: "SCT-011",
     slug: "midnight-amber",
     image: "/images/Perfume/20.webp",
     name: "Midnight Amber",

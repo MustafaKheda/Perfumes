@@ -1,7 +1,38 @@
 import { Facebook, Instagram, Mail, Phone, X, Youtube } from "lucide-react";
 import Link from "next/link";
 
-export default function Footer() {
+type FooterSettings = {
+    facebookUrl: string;
+    xUrl: string;
+    youtubeUrl: string;
+    instagramUrl: string;
+    contactPhone: string;
+    contactEmail: string;
+};
+
+const defaultSettings: FooterSettings = {
+    facebookUrl: "",
+    xUrl: "",
+    youtubeUrl: "",
+    instagramUrl: "",
+    contactPhone: "+96500000000",
+    contactEmail: "support@scentora.com",
+};
+
+export default function Footer({ settings }: { settings: FooterSettings }) {
+    const merged = { ...defaultSettings, ...settings };
+
+    const socialLinks = [
+        { label: "Facebook", href: normalizeSocialUrl(merged.facebookUrl), icon: Facebook },
+        { label: "X", href: normalizeSocialUrl(merged.xUrl), icon: X },
+        { label: "YouTube", href: normalizeSocialUrl(merged.youtubeUrl), icon: Youtube },
+        { label: "Instagram", href: normalizeSocialUrl(merged.instagramUrl), icon: Instagram },
+    ].filter((item) => item.href.length > 0);
+    const phoneHref = merged.contactPhone
+        ? `tel:${merged.contactPhone.replace(/\s+/g, "")}`
+        : "#";
+    const emailHref = merged.contactEmail ? `mailto:${merged.contactEmail}` : "#";
+
     return (
         <footer className=" text-textPrimary font-body">
 
@@ -17,14 +48,14 @@ export default function Footer() {
 
                         <div className="flex gap-3 mt-4">
                             <Link
-                                href="tel:+96500000000"
+                                href={phoneHref}
                                 className="flex items-center gap-2 border border-textPrimary rounded-full px-4 py-2 hover:bg-black hover:text-white transition"
                             >
                                 <Phone className="w-4 h-4" />
                                 Call
                             </Link>
                             <Link
-                                href="mailto:support@scentora.com"
+                                href={emailHref}
                                 className="flex items-center gap-2 border border-textPrimary rounded-full px-4 py-2 hover:bg-black hover:text-white transition"
                             >
                                 <Mail className="w-4 h-4" />
@@ -74,18 +105,22 @@ export default function Footer() {
                     {/* Social Icons */}
                     <div className="flex md:flex-col items-center md:items-end gap-3">
                         <div className="flex gap-3">
-                            <div className="w-10 h-10 rounded-full border border-textPrimary flex items-center justify-center hover:bg-black hover:text-white transition">
-                                <Facebook size={18} />
-                            </div>
-                            <div className="w-10 h-10 rounded-full border border-textPrimary flex items-center justify-center hover:bg-black hover:text-white transition">
-                                <X size={18} />
-                            </div>
-                            <div className="w-10 h-10 rounded-full border border-textPrimary flex items-center justify-center hover:bg-black hover:text-white transition">
-                                <Youtube size={18} />
-                            </div>
-                            <div className="w-10 h-10 rounded-full border border-textPrimary flex items-center justify-center hover:bg-black hover:text-white transition">
-                                <Instagram size={18} />
-                            </div>
+                            {socialLinks.map((item) => {
+                                const Icon = item.icon;
+
+                                return (
+                                    <Link
+                                        key={item.label}
+                                        href={item.href}
+                                        aria-label={item.label}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="w-10 h-10 rounded-full border border-textPrimary flex items-center justify-center hover:bg-black hover:text-white transition"
+                                    >
+                                        <Icon size={18} />
+                                    </Link>
+                                );
+                            })}
                         </div>
                     </div>
                 </div>
@@ -101,4 +136,18 @@ export default function Footer() {
             </div>
         </footer>
     );
+}
+
+function normalizeSocialUrl(value: string) {
+    const trimmed = value.trim();
+
+    if (!trimmed) {
+        return "";
+    }
+
+    if (/^https?:\/\//i.test(trimmed)) {
+        return trimmed;
+    }
+
+    return `https://${trimmed}`;
 }

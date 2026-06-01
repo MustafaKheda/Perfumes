@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Heart, ShoppingBag } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import BuyButton from "./BuyButton";
 import { addGuestCartItem } from "@/lib/guest-cart";
 import {
@@ -35,14 +35,10 @@ export default function ProductCardLarge({
     isWishlisted = false,
 }: ProductCardProps) {
     const [adding, setAdding] = useState(false);
-    const [wishlistActive, setWishlistActive] = useState(isWishlisted);
+    const [wishlistActive, setWishlistActive] = useState(() =>
+        isWishlisted || (productId ? isGuestWishlisted(productId) : false),
+    );
     const [updatingWishlist, setUpdatingWishlist] = useState(false);
-
-    useEffect(() => {
-        if (productId && isGuestWishlisted(productId)) {
-            setWishlistActive(true);
-        }
-    }, [productId]);
 
     async function addToCart() {
         if (!productId) {

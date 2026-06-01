@@ -1,18 +1,23 @@
-import { eq } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { badRequest } from "@/lib/api/http";
 import { db } from "@/lib/db";
 import {
   cartItems,
+  coupons,
   orderItems,
   orderStatusHistory,
   orders,
   products,
+  userCoupons,
+  users,
 } from "@/lib/db/schema";
 import { City, Country, State } from "country-state-city";
 import { isValidPhoneNumber, type CountryCode } from "libphonenumber-js";
 import { isPostalCodeValid } from "@/lib/postal-code";
 import { requireCustomerUser } from "@/lib/user-auth";
+import { buildInvoiceHtml } from "@/lib/invoice";
+import { sendInvoiceEmail } from "@/lib/email";
 
 type CheckoutBody = {
   firstName?: unknown;
@@ -29,6 +34,7 @@ type CheckoutBody = {
   postalCode?: unknown;
   country?: unknown;
   guestItems?: unknown;
+  couponCode?: unknown;
 };
 
 export async function POST(request: Request) {
@@ -71,6 +77,7 @@ async function createOrder(request: Request) {
   const state = stateRecord?.name ?? readString(body.state);
   const postalCode = readString(body.postalCode);
   const country = countryRecord?.name ?? (readString(body.country) || "India");
+  const couponCode = readString(body.couponCode).toUpperCase();
   const cityRecords = stateCode ? City.getCitiesOfState(countryCode, stateCode) : [];
   const validCity =
     cityRecords.length === 0 || cityRecords.some((option) => option.name === city);
@@ -129,6 +136,7 @@ async function createOrder(request: Request) {
           image: products.image,
           price: products.price,
           quantity: cartItems.quantity,
+          scentOption: cartItems.scentOption,
         })
         .from(cartItems)
         .innerJoin(products, eq(cartItems.productId, products.id))
@@ -144,7 +152,20 @@ async function createOrder(request: Request) {
     0,
   );
   const shippingFee = 0;
-  const totalAmount = subtotal + shippingFee;
+  const couponResult =
+    couponCode.length > 0
+      ? await validateCouponForOrder({
+          userId: user?.id ?? null,
+          email,
+          couponCode,
+          subtotal,
+        })
+      : null;
+  if (couponCode && !couponResult) {
+    return badRequest("Invalid coupon code");
+  }
+  const discountAmount = couponResult?.discountAmount ?? 0;
+  const totalAmount = Math.max(0, subtotal - discountAmount + shippingFee);
 
   const order = await db.transaction(async (tx) => {
     const [createdOrder] = await tx
@@ -184,6 +205,7 @@ async function createOrder(request: Request) {
         productId: item.productId,
         name: item.name,
         image: item.image,
+        scentOption: item.scentOption,
         price: item.price,
         quantity: item.quantity,
       })),
@@ -192,8 +214,29 @@ async function createOrder(request: Request) {
     await tx.insert(orderStatusHistory).values({
       orderId: createdOrder.id,
       status: "PENDING",
-      note: "Order placed by customer",
+      note: couponCode
+        ? `Order placed by customer (coupon: ${couponCode}, discount: ${discountAmount.toFixed(2)})`
+        : "Order placed by customer",
     });
+
+    if (couponResult) {
+      await tx
+        .update(userCoupons)
+        .set({
+          isActive: false,
+          usedAt: new Date(),
+          usedOrderId: createdOrder.id,
+          updatedAt: new Date(),
+        })
+        .where(eq(userCoupons.id, couponResult.userCouponId));
+      await tx
+        .update(coupons)
+        .set({
+          redemptionCount: couponResult.redemptionCount + 1,
+          updatedAt: new Date(),
+        })
+        .where(eq(coupons.id, couponResult.couponId));
+    }
 
     if (user) {
       await tx.delete(cartItems).where(eq(cartItems.userId, user.id));
@@ -202,12 +245,122 @@ async function createOrder(request: Request) {
     return createdOrder;
   });
 
+  // Best effort: send invoice email. Do not block checkout on email failure.
+  try {
+    const html = buildInvoiceHtml({
+      orderId: order.id,
+      createdAt: new Date(),
+      customerEmail: email,
+      customerName: `${firstName} ${lastName}`,
+      customerPhone: fullPhone,
+      paymentMethod: "CASH_ON_DELIVERY",
+      subtotal,
+      shippingFee,
+      totalAmount,
+      shippingAddress: {
+        firstName,
+        lastName,
+        dialCode: dialCode || expectedDialCode,
+        phone,
+        fullPhone,
+        countryCode,
+        stateCode,
+        addressLine1,
+        addressLine2,
+        city,
+        state,
+        postalCode,
+        country,
+      },
+      items: cartRows.map((item) => ({
+        name: item.name,
+        quantity: item.quantity,
+        price: Number(item.price),
+        scentOption: item.scentOption || null,
+      })),
+    });
+
+    await sendInvoiceEmail({
+      to: email,
+      customerName: `${firstName} ${lastName}`,
+      orderId: order.id,
+      html,
+    });
+  } catch (invoiceError) {
+    console.error("Invoice email failed", invoiceError);
+  }
+
   return NextResponse.json({
     message: "Order created successfully",
     data: {
       orderId: order.id,
+      discountAmount,
+      couponCode: couponResult ? couponCode : null,
     },
   });
+}
+
+async function validateCouponForOrder({
+  userId,
+  email,
+  couponCode,
+  subtotal,
+}: {
+  userId: string | null;
+  email: string;
+  couponCode: string;
+  subtotal: number;
+}) {
+  const targetUserId =
+    userId ??
+    (
+      await db.query.users.findFirst({
+        where: and(eq(users.email, email), eq(users.role, "USER")),
+        columns: { id: true },
+      })
+    )?.id;
+  if (!targetUserId) return null;
+
+  const assignment = await db.query.userCoupons.findFirst({
+    where: and(
+      eq(userCoupons.userId, targetUserId),
+      eq(userCoupons.isActive, true),
+      isNull(userCoupons.usedAt),
+    ),
+    with: { coupon: true },
+  });
+  if (!assignment) return null;
+  const coupon =
+    assignment && !Array.isArray(assignment.coupon) ? assignment.coupon : null;
+  if (!coupon || coupon.code !== couponCode || !coupon.isActive) return null;
+
+  const now = new Date();
+  if (coupon.startsAt && coupon.startsAt > now) return null;
+  if (coupon.expiresAt && coupon.expiresAt < now) return null;
+  if (
+    coupon.maxRedemptions !== null &&
+    coupon.redemptionCount >= coupon.maxRedemptions
+  ) {
+    return null;
+  }
+
+  const minOrderAmount = Number(coupon.minOrderAmount);
+  if (subtotal < minOrderAmount) return null;
+
+  const value = Number(coupon.discountValue);
+  let discountAmount =
+    coupon.discountType === "PERCENT" ? (subtotal * value) / 100 : value;
+  if (coupon.maxDiscountAmount !== null) {
+    discountAmount = Math.min(discountAmount, Number(coupon.maxDiscountAmount));
+  }
+  discountAmount = Math.max(0, Math.min(discountAmount, subtotal));
+
+  return {
+    userCouponId: assignment.id,
+    couponId: coupon.id,
+    redemptionCount: coupon.redemptionCount,
+    discountAmount,
+  };
 }
 
 function readString(value: unknown) {
@@ -226,6 +379,10 @@ async function getGuestCartRows(value: unknown) {
             item && typeof item === "object" && "quantity" in item
               ? normalizeQuantity(item.quantity)
               : 1,
+          scentOption:
+            item && typeof item === "object" && "scentOption" in item
+              ? readString(item.scentOption)
+              : "",
         }))
         .filter((item) => item.productId)
     : [];
@@ -234,6 +391,7 @@ async function getGuestCartRows(value: unknown) {
     return [];
   }
 
+  const productIds = [...new Set(items.map((item) => item.productId))];
   const rows = await db
     .select({
       productId: products.id,
@@ -242,18 +400,22 @@ async function getGuestCartRows(value: unknown) {
       price: products.price,
     })
     .from(products)
-    .where(eq(products.isActive, true));
+    .where(and(eq(products.isActive, true), inArray(products.id, productIds)));
+  const productById = new Map(rows.map((row) => [row.productId, row]));
 
-  const quantityByProductId = new Map(
-    items.map((item) => [item.productId, item.quantity]),
-  );
+  return items.flatMap((item) => {
+    const row = productById.get(item.productId);
 
-  return rows
-    .filter((row) => quantityByProductId.has(row.productId))
-    .map((row) => ({
+    if (!row) {
+      return [];
+    }
+
+    return {
       ...row,
-      quantity: quantityByProductId.get(row.productId) ?? 1,
-    }));
+      quantity: item.quantity,
+      scentOption: item.scentOption,
+    };
+  });
 }
 
 function normalizeQuantity(value: unknown) {

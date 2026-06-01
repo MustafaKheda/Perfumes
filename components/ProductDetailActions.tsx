@@ -1,7 +1,7 @@
 "use client";
 
 import { Heart, ShoppingBag } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { addGuestCartItem } from "@/lib/guest-cart";
 import {
   addGuestWishlistItem,
@@ -18,6 +18,7 @@ type ProductDetailActionsProps = {
   tag?: string | null;
   slug?: string;
   isWishlisted?: boolean;
+  selectedScent?: string;
 };
 
 export default function ProductDetailActions({
@@ -29,16 +30,13 @@ export default function ProductDetailActions({
   tag,
   slug,
   isWishlisted = false,
+  selectedScent,
 }: ProductDetailActionsProps) {
   const [adding, setAdding] = useState(false);
-  const [wishlistActive, setWishlistActive] = useState(isWishlisted);
+  const [wishlistActive, setWishlistActive] = useState(() =>
+    isWishlisted || isGuestWishlisted(productId),
+  );
   const [updatingWishlist, setUpdatingWishlist] = useState(false);
-
-  useEffect(() => {
-    if (isGuestWishlisted(productId)) {
-      setWishlistActive(true);
-    }
-  }, [productId]);
 
   async function addToCart() {
     setAdding(true);
@@ -47,7 +45,7 @@ export default function ProductDetailActions({
       const response = await fetch("/api/cart", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId, quantity: 1 }),
+        body: JSON.stringify({ productId, quantity: 1, scentOption: selectedScent }),
       });
 
       if (response.status === 401) {
@@ -57,6 +55,7 @@ export default function ProductDetailActions({
           image,
           price,
           quantity: 1,
+          scentOption: selectedScent,
         });
         return;
       }

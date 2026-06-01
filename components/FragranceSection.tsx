@@ -1,111 +1,16 @@
 import SectionHeading from "./SectionHeading";
 import FilterTabs from "./FilterTabs";
 import ProductCard from "./ProductCardLarge";
+import ProductCarousel from "./ProductCarousel";
+import { getProducts } from "@/lib/api/catalog";
+import { getWishlistProductIdSet } from "@/lib/api/wishlist";
 
-const products = [
-    {
-        id: 1,
-        image: "/images/Perfume/1.webp",
-        name: "Noir Mystique",
-        notes: "Oud, Bergamot, Amber",
-        price: "120.00",
-        tag: "HOT",
-        category: "men",
-    },
-    {
-        id: 2,
-        image: "/images/Perfume/2.webp",
-        name: "Velvet Bloom",
-        notes: "Rose, Vanilla, Musk",
-        price: "135.00",
-        tag: "HOT",
-        category: "women",
-    },
-    {
-        id: 3,
-        image: "/images/Perfume/9.webp",
-        name: "Amber Dusk",
-        notes: "Amber, Cedarwood, Jasmine",
-        price: "110.00",
-        tag: "NEW",
-        category: "unisex",
-    },
-    {
-        id: 4,
-        image: "/images/Perfume/31.webp",
-        name: "Amber Dusk",
-        notes: "Amber, Cedarwood, Jasmine",
-        price: "110.00",
-        tag: "NEW",
-        category: "men",
-    },
-    {
-        id: 6,
-        image: "/images/Perfume/35.webp",
-        name: "Amber Dusk",
-        notes: "Amber, Cedarwood, Jasmine",
-        price: "110.00",
-        tag: "NEW",
-        category: "unisex",
-    },
-    {
-        id: 7,
-        image: "/images/Perfume/18.webp",
-        name: "Noir Mystique",
-        notes: "Oud, Bergamot, Amber",
-        price: "120.00",
-        tag: "HOT",
-        category: "men",
-    },
-    {
-        id: 8,
-        image: "/images/Perfume/30.webp",
-        name: "Velvet Bloom",
-        notes: "Rose, Vanilla, Musk",
-        price: "135.00",
-        tag: "HOT",
-        category: "women",
-    },
-    {
-        id: 9,
-        image: "/images/Perfume/7.webp",
-        name: "Noir Mystique",
-        notes: "Oud, Bergamot, Amber",
-        price: "120.00",
-        tag: "HOT",
-        category: "women",
-    },
-    {
-        id: 10,
-        image: "/images/Perfume/37.webp",
-        name: "Noir Mystique",
-        notes: "Oud, Bergamot, Amber",
-        price: "120.00",
-        tag: "HOT",
-        category: "women",
-    },
-    {
-        id: 11,
-        image: "/images/Perfume/32.webp",
-        name: "Velvet Bloom",
-        notes: "Rose, Vanilla, Musk",
-        price: "135.00",
-        tag: "HOT",
-        category: "women",
-    },
-    {
-        id: 12,
-        image: "/images/Perfume/20.webp",
-        name: "Amber Dusk",
-        notes: "Amber, Cedarwood, Jasmine",
-        price: "110.00",
-        tag: "NEW",
-        category: "men",
-    },
-];
-
-export default function FragranceSection() {
-
+export default async function FragranceSection() {
+    const [result, wishlistProductIds] = await Promise.all([
+        getProducts({ limit: "12" }),
+        getWishlistProductIdSet(),
+    ]);
+    const products = result.data;
 
     // Structured data (JSON-LD)
     const productSchema = {
@@ -117,11 +22,11 @@ export default function FragranceSection() {
             position: index + 1,
             name: p.name,
             image: `https://yourdomain.com${p.image}`,
-            description: `${p.notes} perfume`,
+            description: `${p.notes.join(", ")} perfume`,
             offers: {
                 "@type": "Offer",
                 priceCurrency: "USD",
-                price: p.price,
+                price: p.price.toFixed(2),
                 availability: "https://schema.org/InStock",
             },
         })),
@@ -140,17 +45,28 @@ export default function FragranceSection() {
             />
             <FilterTabs />
 
-            <div
-                className=" flex snap-x snap-mandatory gap-3 overflow-x-auto  [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+            <ProductCarousel
+                showControls={products.length > 4}
+                className="mt-2"
                 itemScope
                 itemType="https://schema.org/ItemList"
             >
                 {products.map((p) => (
-                    <article key={p.id} itemProp="itemListElement" className="snap-start shrink-0 w-[340px]">
-                        <ProductCard {...p} />
+                    <article key={p.id} itemProp="itemListElement">
+                        <ProductCard
+                            productId={p.id}
+                            image={p.image}
+                            name={p.name}
+                            slug={p.slug}
+                            notes={p.notes.join(", ")}
+                            price={p.price.toFixed(2)}
+                            tag={p.tag ?? undefined}
+                            category={p.category}
+                            isWishlisted={wishlistProductIds.has(p.id)}
+                        />
                     </article>
                 ))}
-            </div>
+            </ProductCarousel>
 
             {/* ✅ JSON-LD Structured Data for SEO */}
             <script

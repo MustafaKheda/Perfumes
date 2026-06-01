@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import BestSellers from "./Bestsellers";
 
 export default function Hero() {
@@ -25,14 +25,11 @@ export default function Hero() {
         {/* Explore button */}
         <Link
           href="/shop/all"
-          className="group relative inline-flex min-h-14 items-center gap-3 overflow-hidden rounded-full border border-black/10 bg-[#F9A826] px-5 pr-2 font-body text-sm font-bold text-black shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:bg-black hover:text-white hover:shadow-xl active:translate-y-0"
+          className="group inline-flex min-h-12 items-center gap-3 rounded-full border border-textPrimary bg-textPrimary px-5 py-3 font-body text-sm font-semibold text-white shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:bg-white hover:text-textPrimary hover:shadow-md active:translate-y-0"
           aria-label="Explore Shop"
         >
-          <span className="grid h-9 w-9 place-items-center rounded-full bg-white/45 transition group-hover:bg-white/15">
-            <Sparkles className="h-4 w-4" aria-hidden="true" />
-          </span>
           <span className="whitespace-nowrap">Explore Shop</span>
-          <span className="grid h-10 w-10 place-items-center rounded-full bg-black text-white transition group-hover:translate-x-0.5 group-hover:bg-white group-hover:text-black">
+          <span className="grid h-8 w-8 place-items-center rounded-full bg-white text-textPrimary transition group-hover:translate-x-0.5 group-hover:bg-textPrimary group-hover:text-white">
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </span>
         </Link>
